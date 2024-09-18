@@ -15,9 +15,6 @@ PEDAL_TRANSITION = 10. * CV.MPH_TO_MS
 
 
 class CarControllerParams:
-  ACCEL_MAX = 2.0  #1.5では発進が鈍る？ m/s2, lower than allowed 2.0 m/s2 for tuning reasons
-  ACCEL_MIN = -3.5  # m/s2
-
   STEER_STEP = 1
   STEER_MAX = 1500
   STEER_ERROR_MAX = 350     # max delta between torque cmd and torque motor
@@ -32,6 +29,12 @@ class CarControllerParams:
   ANGLE_RATE_LIMIT_DOWN = AngleRateLimit(speed_bp=[5, 25], angle_v=[0.36, 0.26])
 
   def __init__(self, CP):
+    if CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
+      self.ACCEL_MAX = 2.0
+    else:
+      self.ACCEL_MAX = 2.0  #1.5では発進が鈍る？ # m/s2, lower than allowed 2.0 m/s^2 for tuning reasons
+    self.ACCEL_MIN = -3.5  # m/s2
+
     if CP.lateralTuning.which() == 'torque':
       self.STEER_DELTA_UP = 15       # 1.0s time to peak torque
       self.STEER_DELTA_DOWN = 25     # カスタム50を戻す always lower than 45 otherwise the Rav4 faults (Prius seems ok with 50)
@@ -57,6 +60,8 @@ class ToyotaFlags(IntFlag):
   NO_STOP_TIMER = 256
   # these cars are speculated to allow stop and go when the DSU is unplugged or disabled with sDSU
   SNG_WITHOUT_DSU = 512
+  # these cars can utilize 2.0 m/s^2
+  RAISED_ACCEL_LIMIT = 1024
 
   POWER_STEERING_TSS2 = 2048 #onroad/annotated_camera.ccのcp.getFlags()ビットテストを合わせること。
 
