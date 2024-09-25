@@ -283,8 +283,8 @@ class CarState(CarStateBase):
       ("STEER_TORQUE_SENSOR", 50),
     ]
 
-    # if CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
-    #   messages.append(("CLUTCH", 15))
+    if CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
+      messages.append(("CLUTCH", 15))
 
     if CP.carFingerprint != CAR.TOYOTA_MIRAI:
       messages.append(("ENGINE_RPM", 42))
