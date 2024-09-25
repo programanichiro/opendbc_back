@@ -48,7 +48,6 @@ class ToyotaFlags(IntFlag):
   HYBRID = 1
   SMART_DSU = 2
   DISABLE_RADAR = 4
-  RADAR_CAN_FILTER = 1024
 
   # Static flags
   TSS2 = 8
@@ -64,6 +63,7 @@ class ToyotaFlags(IntFlag):
   RAISED_ACCEL_LIMIT = 1024
 
   POWER_STEERING_TSS2 = 2048 #onroad/annotated_camera.ccのcp.getFlags()ビットテストを合わせること。
+  RADAR_CAN_FILTER = 4096 #もう要らないか
 
 class Footnote(Enum):
   CAMRY = CarFootnote(
