@@ -160,50 +160,56 @@ class CarController(CarControllerBase):
                                                           lta_active, self.frame // 2, torque_wind_down))
 
     # *** gas and brake ***
-    comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
-    # prohibit negative compensatory calculations when first activating long after accelerator depression or engagement
-    if not CC.longActive:
-      self.prohibit_neg_calculation = True
-    # don't reset until a reasonable compensatory value is reached
-    if CS.pcm_neutral_force > comp_thresh * self.CP.mass:
-      self.prohibit_neg_calculation = False
-    # limit minimum to only positive until first positive is reached after engagement, don't calculate when long isn't active
-    if CC.longActive and not self.prohibit_neg_calculation:
-      accel_offset = CS.pcm_neutral_force / self.CP.mass
+    if not self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
+      flag_RAISED_ACCEL_LIMIT = False
+      comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
+      # prohibit negative compensatory calculations when first activating long after accelerator depression or engagement
+      if not CC.longActive:
+        self.prohibit_neg_calculation = True
+      # don't reset until a reasonable compensatory value is reached
+      if CS.pcm_neutral_force > comp_thresh * self.CP.mass:
+        self.prohibit_neg_calculation = False
+      # limit minimum to only positive until first positive is reached after engagement, don't calculate when long isn't active
+      if CC.longActive and not self.prohibit_neg_calculation:
+        accel_offset = CS.pcm_neutral_force / self.CP.mass
+      else:
+        accel_offset = 0.
+      # only calculate pcm_accel_cmd when long is active to prevent disengagement from accelerator depression
+      if CC.longActive:
+        pcm_accel_cmd = clip(actuators.accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
+        pcm_accel_cmd = clip(actuators.accel, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
+      else:
+        pcm_accel_cmd = 0.
     else:
-      accel_offset = 0.
-    # only calculate pcm_accel_cmd when long is active to prevent disengagement from accelerator depression
-    if CC.longActive:
-      pcm_accel_cmd = clip(actuators.accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
-      pcm_accel_cmd = clip(actuators.accel, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
-    else:
-      pcm_accel_cmd = 0.
+      flag_RAISED_ACCEL_LIMIT = True
+      # 公式のpcm_accel_compensation制御。上のcydia制御と被る。試してみるか要検討。上のgas and brakeと入れ替えるだけで試せそう
+      # *** gas and brake ***
+      # For cars where we allow a higher max acceleration of 2.0 m/s^2, compensate for PCM request overshoot and imprecise braking
+      # TODO: sometimes when switching from brake to gas quickly, CLUTCH->ACCEL_NET shows a slow unwind. make it go to 0 immediately
+      if self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT and CC.longActive and not CS.out.cruiseState.standstill:
+        # calculate amount of acceleration PCM should apply to reach target, given pitch
+        accel_due_to_pitch = math.sin(CS.slope_angle) * ACCELERATION_DUE_TO_GRAVITY
+        net_acceleration_request = actuators.accel + accel_due_to_pitch
 
-    # 公式のpcm_accel_compensation制御。上のcydia制御と被る。試してみるか要検討。上のgas and brakeと入れ替えるだけで試せそう
-    # # *** gas and brake ***
-    # # For cars where we allow a higher max acceleration of 2.0 m/s^2, compensate for PCM request overshoot and imprecise braking
-    # # TODO: sometimes when switching from brake to gas quickly, CLUTCH->ACCEL_NET shows a slow unwind. make it go to 0 immediately
-    # if self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT and CC.longActive and not CS.out.cruiseState.standstill:
-    #   # calculate amount of acceleration PCM should apply to reach target, given pitch
-    #   accel_due_to_pitch = math.sin(CS.slope_angle) * ACCELERATION_DUE_TO_GRAVITY
-    #   net_acceleration_request = actuators.accel + accel_due_to_pitch
+        # let PCM handle stopping for now
+        pcm_accel_compensation = 0.0
+        if actuators.longControlState != LongCtrlState.stopping:
+          pcm_accel_compensation = 2.0 * (CS.pcm_accel_net - net_acceleration_request)
 
-    #   # let PCM handle stopping for now
-    #   pcm_accel_compensation = 0.0
-    #   if actuators.longControlState != LongCtrlState.stopping:
-    #     pcm_accel_compensation = 2.0 * (CS.pcm_accel_net - net_acceleration_request)
+        # prevent compensation windup
+        pcm_accel_compensation = clip(pcm_accel_compensation, actuators.accel - self.params.ACCEL_MAX,
+                                      actuators.accel - self.params.ACCEL_MIN)
 
-    #   # prevent compensation windup
-    #   pcm_accel_compensation = clip(pcm_accel_compensation, actuators.accel - self.params.ACCEL_MAX,
-    #                                 actuators.accel - self.params.ACCEL_MIN)
+        self.pcm_accel_compensation = rate_limit(pcm_accel_compensation, self.pcm_accel_compensation, -0.01, 0.01)
+        pcm_accel_cmd = actuators.accel - self.pcm_accel_compensation
+      else:
+        self.pcm_accel_compensation = 0.0
+        pcm_accel_cmd = actuators.accel
 
-    #   self.pcm_accel_compensation = rate_limit(pcm_accel_compensation, self.pcm_accel_compensation, -0.01, 0.01)
-    #   pcm_accel_cmd = actuators.accel - self.pcm_accel_compensation
-    # else:
-    #   self.pcm_accel_compensation = 0.0
-    #   pcm_accel_cmd = actuators.accel
+      pcm_accel_cmd = clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
 
-    # pcm_accel_cmd = clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
+    with open('/tmp/debug_out_v','w') as fp:
+      fp.write("RAISED_ACCEL_LIMIT:%d" % flag_RAISED_ACCEL_LIMIT)
 
     actuators_accel = actuators.accel
     try:
@@ -266,14 +272,18 @@ class CarController(CarControllerBase):
       if pcm_cancel_cmd and self.CP.carFingerprint in UNSUPPORTED_DSU_CAR:
         can_sends.append(toyotacan.create_acc_cancel_command(self.packer))
       elif self.CP.openpilotLongitudinalControl:
-        # can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, pcm_cancel_cmd, self.standstill_req, lead, CS.acc_type, fcw_alert,
-        #                                                 self.distance_button))
-        can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, actuators_accel, CS.out.aEgo, CC.longActive, pcm_cancel_cmd, self.standstill_req,
-                                                        lead, CS.acc_type, fcw_alert, self.distance_button))
+        if flag_RAISED_ACCEL_LIMIT:
+          can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, pcm_cancel_cmd, self.standstill_req, lead, CS.acc_type, fcw_alert,
+                                                          self.distance_button))
+        else:
+          can_sends.append(toyotacan.create_accel_command_cydia(self.packer, pcm_accel_cmd, actuators_accel, CS.out.aEgo, CC.longActive, pcm_cancel_cmd, self.standstill_req,
+                                                          lead, CS.acc_type, fcw_alert, self.distance_button))
         self.accel = pcm_accel_cmd
       else:
-        # can_sends.append(toyotacan.create_accel_command(self.packer, 0, pcm_cancel_cmd, False, lead, CS.acc_type, False, self.distance_button))
-        can_sends.append(toyotacan.create_accel_command(self.packer, 0, 0, 0, False, pcm_cancel_cmd, False, lead, CS.acc_type, False, self.distance_button))
+        if flag_RAISED_ACCEL_LIMIT:
+          can_sends.append(toyotacan.create_accel_command(self.packer, 0, pcm_cancel_cmd, False, lead, CS.acc_type, False, self.distance_button))
+        else:
+          can_sends.append(toyotacan.create_accel_command_cydia(self.packer, 0, 0, 0, False, pcm_cancel_cmd, False, lead, CS.acc_type, False, self.distance_button))
 
     # *** hud ui ***
     if self.CP.carFingerprint != CAR.TOYOTA_PRIUS_V:

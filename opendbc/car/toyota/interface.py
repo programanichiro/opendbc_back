@@ -5,6 +5,7 @@ from opendbc.car.toyota.values import Ecu, CAR, DBC, ToyotaFlags, CarControllerP
                                                   MIN_ACC_SPEED, EPS_SCALE, UNSUPPORTED_DSU_CAR, NO_STOP_TIMER_CAR, ANGLE_CONTROL_CAR
 from opendbc.car.disable_ecu import disable_ecu
 from opendbc.car.interfaces import CarInterfaceBase
+from openpilot.common.params import Params
 
 SteerControlType = structs.CarParams.SteerControlType
 
@@ -57,7 +58,7 @@ class CarInterface(CarInterfaceBase):
     ret.enableDsu = len(found_ecus) > 0 and Ecu.dsu not in found_ecus and candidate not in (NO_DSU_CAR | UNSUPPORTED_DSU_CAR) \
                                         and not (ret.flags & ToyotaFlags.SMART_DSU)
 
-    if candidate == CAR.LEXUS_ES_TSS2 and Ecu.hybrid not in found_ecus:
+    if Params().get_bool("AccelMethodSwitch") == True: #candidate == CAR.LEXUS_ES_TSS2 and Ecu.hybrid not in found_ecus:
       ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value
 
     if candidate == CAR.TOYOTA_PRIUS:
