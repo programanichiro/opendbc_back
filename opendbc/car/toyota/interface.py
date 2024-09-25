@@ -58,7 +58,7 @@ class CarInterface(CarInterfaceBase):
     ret.enableDsu = len(found_ecus) > 0 and Ecu.dsu not in found_ecus and candidate not in (NO_DSU_CAR | UNSUPPORTED_DSU_CAR) \
                                         and not (ret.flags & ToyotaFlags.SMART_DSU)
 
-    if Params().get_bool("AccelMethodSwitch") == True: #candidate == CAR.LEXUS_ES_TSS2 and Ecu.hybrid not in found_ecus:
+    if Params().get_bool("AccelMethodSwitch") == False: #candidate == CAR.LEXUS_ES_TSS2 and Ecu.hybrid not in found_ecus:
       ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value
 
     if candidate == CAR.TOYOTA_PRIUS:
