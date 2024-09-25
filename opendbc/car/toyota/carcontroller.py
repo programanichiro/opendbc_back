@@ -208,8 +208,8 @@ class CarController(CarControllerBase):
 
       pcm_accel_cmd = clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
 
-    with open('/tmp/debug_out_v','w') as fp:
-      fp.write("RAISED_ACCEL_LIMIT:%d" % flag_RAISED_ACCEL_LIMIT)
+    # with open('/tmp/debug_out_v','w') as fp:
+    #   fp.write("RAISED_ACCEL_LIMIT:%d" % flag_RAISED_ACCEL_LIMIT)
 
     actuators_accel = actuators.accel
     try:
