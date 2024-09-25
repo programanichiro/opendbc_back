@@ -77,11 +77,11 @@ class CarState(CarStateBase):
     # Describes the acceleration request from the PCM if on flat ground, may be higher or lower if pitched
     # CLUTCH->ACCEL_NET is only accurate for gas, PCM_CRUISE->ACCEL_NET is only accurate for brake
     # These signals only have meaning when ACC is active
-    if self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
-      # Sometimes ACC_BRAKING can be 1 while showing we're applying gas already
-      self.pcm_accel_net = max(cp.vl["CLUTCH"]["ACCEL_NET"], 0.0)
-      if cp.vl["PCM_CRUISE"]["ACC_BRAKING"]:
-        self.pcm_accel_net += min(cp.vl["PCM_CRUISE"]["ACCEL_NET"], 0.0)
+    # if self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
+    #   # Sometimes ACC_BRAKING can be 1 while showing we're applying gas already
+    #   self.pcm_accel_net = max(cp.vl["CLUTCH"]["ACCEL_NET"], 0.0)
+    #   if cp.vl["PCM_CRUISE"]["ACC_BRAKING"]:
+    #     self.pcm_accel_net += min(cp.vl["PCM_CRUISE"]["ACCEL_NET"], 0.0)
 
     # filtered pitch estimate from the car, negative is a downward slope
     self.slope_angle = cp.vl["VSC1S07"]["ASLP"] * CV.DEG_TO_RAD
@@ -283,8 +283,8 @@ class CarState(CarStateBase):
       ("STEER_TORQUE_SENSOR", 50),
     ]
 
-    if CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
-      messages.append(("CLUTCH", 15))
+    # if CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
+    #   messages.append(("CLUTCH", 15))
 
     if CP.carFingerprint != CAR.TOYOTA_MIRAI:
       messages.append(("ENGINE_RPM", 42))

@@ -160,7 +160,7 @@ class CarController(CarControllerBase):
                                                           lta_active, self.frame // 2, torque_wind_down))
 
     # *** gas and brake ***
-    if not self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
+    if True: #not self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
       flag_RAISED_ACCEL_LIMIT = False
       comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
       # prohibit negative compensatory calculations when first activating long after accelerator depression or engagement
