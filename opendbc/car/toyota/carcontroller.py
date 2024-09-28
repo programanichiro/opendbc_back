@@ -184,8 +184,7 @@ class CarController(CarControllerBase):
         pcm_accel_cmd = 0.
     else:
       flag_RAISED_ACCEL_LIMIT = True
-      # 公式のpcm_accel_compensation制御。上のcydia制御と被る。試してみるか要検討。上のgas and brakeと入れ替えるだけで試せそう
-      # *** gas and brake ***
+      # 公式のpcm_accel_compensation制御。上のcydia制御と被る。上のgas and brakeと入れ替えるだけで試せそう
       # For cars where we allow a higher max acceleration of 2.0 m/s^2, compensate for PCM request overshoot and imprecise braking
       # TODO: sometimes when switching from brake to gas quickly, CLUTCH->ACCEL_NET shows a slow unwind. make it go to 0 immediately
       if self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT and CC.longActive and not CS.out.cruiseState.standstill:
@@ -204,9 +203,14 @@ class CarController(CarControllerBase):
 
         self.pcm_accel_compensation = rate_limit(pcm_accel_compensation, self.pcm_accel_compensation, -0.01, 0.01)
         pcm_accel_cmd = actuators.accel - self.pcm_accel_compensation
+
+        # Along with rate limiting positive jerk below, this greatly improves gas response time
+        # Consider the net acceleration request that the PCM should be applying (pitch included)
+        permit_braking = net_acceleration_request < 0.1
       else:
         self.pcm_accel_compensation = 0.0
         pcm_accel_cmd = actuators.accel
+        permit_braking = True
 
       pcm_accel_cmd = clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
 
@@ -277,15 +281,16 @@ class CarController(CarControllerBase):
         if flag_RAISED_ACCEL_LIMIT:
           # internal PCM gas command can get stuck unwinding from negative accel so we apply a generous rate limit
           pcm_accel_cmd = min(pcm_accel_cmd, self.accel + ACCEL_WINDUP_LIMIT) if CC.longActive else 0.0
-          can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, pcm_cancel_cmd, self.standstill_req, lead, CS.acc_type, fcw_alert,
-                                                          self.distance_button))
+
+          can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, pcm_cancel_cmd, permit_braking, self.standstill_req, lead, CS.acc_type,
+                                                          fcw_alert, self.distance_button))
         else:
           can_sends.append(toyotacan.create_accel_command_cydia(self.packer, pcm_accel_cmd, actuators_accel, CS.out.aEgo, CC.longActive, pcm_cancel_cmd, self.standstill_req,
                                                           lead, CS.acc_type, fcw_alert, self.distance_button))
         self.accel = pcm_accel_cmd
       else:
         if flag_RAISED_ACCEL_LIMIT:
-          can_sends.append(toyotacan.create_accel_command(self.packer, 0, pcm_cancel_cmd, False, lead, CS.acc_type, False, self.distance_button))
+          can_sends.append(toyotacan.create_accel_command(self.packer, 0, pcm_cancel_cmd, True, False, lead, CS.acc_type, False, self.distance_button))
         else:
           can_sends.append(toyotacan.create_accel_command_cydia(self.packer, 0, 0, 0, False, pcm_cancel_cmd, False, lead, CS.acc_type, False, self.distance_button))
 
