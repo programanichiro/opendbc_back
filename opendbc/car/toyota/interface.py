@@ -39,8 +39,6 @@ class CarInterface(CarInterfaceBase):
       ret.steerActuatorDelay = 0.12  # Default delay, Prius has larger delay
       ret.steerLimitTimer = 0.4
 
-    ret.stoppingControl = False  # Toyota starts braking more when it thinks you want to stop
-
     stop_and_go = candidate in TSS2_CAR
     if candidate in TSS2_CAR:
       ret.flags |= ToyotaFlags.POWER_STEERING_TSS2.value #パワステモーターTSS2
