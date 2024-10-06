@@ -306,18 +306,14 @@ class CarState(CarStateBase):
         ("GEAR_PACKET", 1),
         ("VSC1S07", 20),
       ]
+      #ichiropilot
+      if CP.flags & ToyotaFlags.HYBRID:
+        messages.append(("GAS_PEDAL_HYBRID", 33))
+      else:
+        messages.append(("GAS_PEDAL", 33))
 
     if CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
       messages.append(("CLUTCH", 15))
-
-    if CP.carFingerprint != CAR.TOYOTA_MIRAI:
-      messages.append(("ENGINE_RPM", 42))
-
-    #ichiropilot
-    if CP.flags & ToyotaFlags.HYBRID:
-      messages.append(("GAS_PEDAL_HYBRID", 33))
-    else:
-      messages.append(("GAS_PEDAL", 33))
 
     if CP.carFingerprint in UNSUPPORTED_DSU_CAR:
       messages.append(("DSU_CRUISE", 5))
