@@ -59,7 +59,6 @@ class CarState(CarStateBase):
     self.acc_type = 1
     self.lkas_hud = {}
     self.pcm_accel_net = 0.0
-    self.slope_angle = 0.0
     self.secoc_synchronization = None
 
   def update(self, cp, cp_cam, *_) -> structs.CarState:
@@ -112,7 +111,6 @@ class CarState(CarStateBase):
       #ichiropilot
       msg = "GAS_PEDAL_HYBRID" if (self.CP.flags & ToyotaFlags.HYBRID) else "GAS_PEDAL"
       ret.gas = cp.vl[msg]["GAS_PEDAL"]
-      self.slope_angle = cp.vl["VSC1S07"]["ASLP"] * CV.DEG_TO_RAD  # filtered pitch from the car, negative is downward
       can_gear = int(cp.vl["GEAR_PACKET"]["GEAR"])
       if not self.CP.enableDsu and not self.CP.flags & ToyotaFlags.DISABLE_RADAR.value:
         ret.stockAeb = bool(cp_acc.vl["PRE_COLLISION"]["PRECOLLISION_ACTIVE"] and cp_acc.vl["PRE_COLLISION"]["FORCE"] < -1e-5)
@@ -304,7 +302,6 @@ class CarState(CarStateBase):
 
       messages += [
         ("GEAR_PACKET", 1),
-        ("VSC1S07", 20),
       ]
       #ichiropilot
       if CP.flags & ToyotaFlags.HYBRID:
