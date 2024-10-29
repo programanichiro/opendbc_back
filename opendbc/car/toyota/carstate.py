@@ -44,6 +44,9 @@ class CarState(CarStateBase):
     self.accurate_steer_angle_seen = False
     self.angle_offset = FirstOrderFilter(None, 60.0, DT_CTRL, initialized=False)
 
+    self.lkas_enabled = False
+    self.prev_lkas_enabled = False
+
     self.brake_state = False
     # self.params = Params()
     # self.flag_eps_TSS2 = True if CP.flags & ToyotaFlags.POWER_STEERING_TSS2.value else False
@@ -249,6 +252,29 @@ class CarState(CarStateBase):
 
     if self.CP.carFingerprint != CAR.TOYOTA_PRIUS_V:
       self.lkas_hud = copy.copy(cp_cam.vl["LKAS_HUD"])
+      self.lkas_enabled = cp_cam.vl["LKAS_HUD"]["LKAS_STATUS"]
+      if self.prev_lkas_enabled is None:
+        self.prev_lkas_enabled = self.lkas_enabled
+      steer_always = 0
+      try:
+        with open('/tmp/steer_always.txt','r') as fp:
+          steer_always_str = fp.read()
+          if steer_always_str:
+            if int(steer_always_str) >= 1:
+              steer_always = 2
+      except Exception as e:
+        pass
+      if not self.prev_lkas_enabled and self.lkas_enabled and steer_always == 0 and ret.cruiseState.available:
+        with open('/tmp/steer_always.txt','w') as fp:
+         fp.write('%f' % 1)
+        with open('/data/steer_always.txt','w') as fp:
+         fp.write('%f' % 1)
+      elif (self.prev_lkas_enabled and not self.lkas_enabled and steer_always != 0) or not ret.cruiseState.available:
+        with open('/tmp/steer_always.txt','w') as fp:
+         fp.write('%f' % 0)
+        with open('/data/steer_always.txt','w') as fp:
+         fp.write('%f' % 0)
+      self.prev_lkas_enabled = self.lkas_enabled
 
     # if self.pcm_follow_distance != cp.vl["PCM_CRUISE_2"]['PCM_FOLLOW_DISTANCE']:
     #   if self.pcm_follow_distance != 0 and cp.vl["PCM_CRUISE_2"]['PCM_FOLLOW_DISTANCE'] != 0:
