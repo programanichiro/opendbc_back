@@ -255,8 +255,6 @@ class CarState(CarStateBase):
       self.lkas_enabled = cp_cam.vl["LKAS_HUD"]["LKAS_STATUS"]
       if self.prev_lkas_enabled is None:
         self.prev_lkas_enabled = self.lkas_enabled
-      with open('/tmp/debug_out_v','w') as fp:
-        fp.write("lkas_enabled:%d,%d" % (self.lkas_enabled,self.prev_lkas_enabled))
       steer_always = 0
       try:
         with open('/tmp/steer_always.txt','r') as fp:
@@ -266,6 +264,8 @@ class CarState(CarStateBase):
               steer_always = 2
       except Exception as e:
         pass
+      with open('/tmp/debug_out_v','w') as fp:
+        fp.write("lkas_enabled:%d,%d,<%d,%d>" % (self.lkas_enabled,self.prev_lkas_enabled,steer_always,ret.cruiseState.available))
       if not self.prev_lkas_enabled and self.lkas_enabled and steer_always == 0 and ret.cruiseState.available:
         with open('/tmp/steer_always.txt','w') as fp:
          fp.write('%f' % 1)
