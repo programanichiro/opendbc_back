@@ -266,12 +266,12 @@ class CarState(CarStateBase):
         pass
       with open('/tmp/debug_out_v','w') as fp:
         fp.write("lkas_enabled:%d,%d,<%d,%d>" % (self.lkas_enabled,self.prev_lkas_enabled,steer_always,ret.cruiseState.available))
-      if not self.prev_lkas_enabled and self.lkas_enabled and steer_always == 0 and ret.cruiseState.available:
+      if not self.prev_lkas_enabled and self.lkas_enabled and steer_always == 0:# and ret.cruiseState.available:
         with open('/tmp/steer_always.txt','w') as fp:
          fp.write('%f' % 1)
         with open('/data/steer_always.txt','w') as fp:
          fp.write('%f' % 1)
-      elif (self.prev_lkas_enabled and not self.lkas_enabled and steer_always != 0) or not ret.cruiseState.available:
+      elif (self.prev_lkas_enabled and not self.lkas_enabled and steer_always != 0):# or not ret.cruiseState.available:
         with open('/tmp/steer_always.txt','w') as fp:
          fp.write('%f' % 0)
         with open('/data/steer_always.txt','w') as fp:
