@@ -122,12 +122,18 @@ def create_fcw_command(packer, fcw):
 
 def create_ui_command(packer, steer, chime, left_line, right_line, left_lane_depart, right_lane_depart, enabled, stock_lkas_hud):
   steer_always = 0
+  cruise_available = 0
   try:
     with open('/tmp/steer_always.txt','r') as fp:
       steer_always_str = fp.read()
       if steer_always_str:
         if int(steer_always_str) >= 1:
           steer_always = 2
+    with open('/tmp/cruise_available.txt','r') as fp:
+      cruise_available_str = fp.read()
+      if cruise_available_str:
+        if int(cruise_available_str) >= 1:
+          cruise_available = 1 #ACCボタンがOFFならBARRIERSを有効にしない。
   except Exception as e:
     pass
 
@@ -136,7 +142,7 @@ def create_ui_command(packer, steer, chime, left_line, right_line, left_lane_dep
     "LDA_ALERT": steer,
     "RIGHT_LINE": 3 if right_lane_depart else 1 if right_line else 2,
     "LEFT_LINE": 3 if left_lane_depart else 1 if left_line else 2,
-    "BARRIERS": 1 if enabled or steer_always != 0 else 0,
+    "BARRIERS": 1 if enabled or (steer_always != 0 and cruise_available != 0) else 0,
     "LKAS_STATUS": steer_always, #1,
 
     # static signals
