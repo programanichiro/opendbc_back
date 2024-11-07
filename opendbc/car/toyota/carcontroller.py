@@ -77,6 +77,7 @@ class CarController(CarControllerBase):
 
   def update(self, CC, CS, now_nanos):
     actuators = CC.actuators
+    stopping = actuators.longControlState == LongCtrlState.stopping
     hud_control = CC.hudControl
     pcm_cancel_cmd = CC.cruiseControl.cancel
     lat_active = CC.latActive and abs(CS.out.steeringTorque) < MAX_USER_TORQUE
@@ -218,41 +219,41 @@ class CarController(CarControllerBase):
         pcm_accel_cmd = clip(actuators.accel, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
       else:
         pcm_accel_cmd = 0.
+    # 公式のpcm_accel_compensation制御。上のcydia制御と被る。上のgas and brakeと入れ替えるだけで試せそう
+    # For cars where we allow a higher max acceleration of 2.0 m/s^2, compensate for PCM request overshoot and imprecise braking
+    elif self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT and CC.longActive and not CS.out.cruiseState.standstill:
+      flag_RAISED_ACCEL_LIMIT = True
+      # calculate amount of acceleration PCM should apply to reach target, given pitch
+      if len(CC.orientationNED) == 3:
+        accel_due_to_pitch = math.sin(CC.orientationNED[1]) * ACCELERATION_DUE_TO_GRAVITY
+      else:
+        accel_due_to_pitch = 0.0
+
+      net_acceleration_request = actuators.accel + accel_due_to_pitch
+
+      # let PCM handle stopping for now
+      pcm_accel_compensation = 0.0
+      if not stopping:
+        pcm_accel_compensation = 2.0 * (CS.pcm_accel_net - net_acceleration_request)
+
+      # prevent compensation windup
+      pcm_accel_compensation = clip(pcm_accel_compensation, actuators.accel - self.params.ACCEL_MAX,
+                                    actuators.accel - self.params.ACCEL_MIN)
+
+      self.pcm_accel_compensation = rate_limit(pcm_accel_compensation, self.pcm_accel_compensation, -0.01, 0.01)
+      pcm_accel_cmd = actuators.accel - self.pcm_accel_compensation
+
+      # Along with rate limiting positive jerk below, this greatly improves gas response time
+      # Consider the net acceleration request that the PCM should be applying (pitch included)
+      if net_acceleration_request < 0.1 or stopping:
+        self.permit_braking = True
+      elif net_acceleration_request > 0.2:
+        self.permit_braking = False
     else:
       flag_RAISED_ACCEL_LIMIT = True
-      # 公式のpcm_accel_compensation制御。上のcydia制御と被る。上のgas and brakeと入れ替えるだけで試せそう
-      # For cars where we allow a higher max acceleration of 2.0 m/s^2, compensate for PCM request overshoot and imprecise braking
-      if self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT and CC.longActive and not CS.out.cruiseState.standstill:
-        # calculate amount of acceleration PCM should apply to reach target, given pitch
-        if len(CC.orientationNED) == 3:
-          accel_due_to_pitch = math.sin(CC.orientationNED[1]) * ACCELERATION_DUE_TO_GRAVITY
-        else:
-          accel_due_to_pitch = 0.0
-
-        net_acceleration_request = actuators.accel + accel_due_to_pitch
-
-        # let PCM handle stopping for now
-        pcm_accel_compensation = 0.0
-        if actuators.longControlState != LongCtrlState.stopping:
-          pcm_accel_compensation = 2.0 * (CS.pcm_accel_net - net_acceleration_request)
-
-        # prevent compensation windup
-        pcm_accel_compensation = clip(pcm_accel_compensation, actuators.accel - self.params.ACCEL_MAX,
-                                      actuators.accel - self.params.ACCEL_MIN)
-
-        self.pcm_accel_compensation = rate_limit(pcm_accel_compensation, self.pcm_accel_compensation, -0.01, 0.01)
-        pcm_accel_cmd = actuators.accel - self.pcm_accel_compensation
-
-        # Along with rate limiting positive jerk below, this greatly improves gas response time
-        # Consider the net acceleration request that the PCM should be applying (pitch included)
-        if net_acceleration_request < 0.1:
-          self.permit_braking = True
-        elif net_acceleration_request > 0.2:
-          self.permit_braking = False
-      else:
-        self.pcm_accel_compensation = 0.0
-        pcm_accel_cmd = actuators.accel
-        self.permit_braking = True
+      self.pcm_accel_compensation = 0.0
+      pcm_accel_cmd = actuators.accel
+      self.permit_braking = True
 
       pcm_accel_cmd = clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
 
