@@ -255,6 +255,7 @@ class CarController(CarControllerBase):
       pcm_accel_cmd = actuators.accel
       self.permit_braking = True
 
+    if flag_RAISED_ACCEL_LIMIT:
       pcm_accel_cmd = clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
 
     # with open('/tmp/debug_out_v','w') as fp:
