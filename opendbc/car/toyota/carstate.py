@@ -291,7 +291,7 @@ class CarState(CarStateBase):
       self.pcm_follow_distance = cp.vl["PCM_CRUISE_2"]["PCM_FOLLOW_DISTANCE"] #DISTANCE_LINESと逆1,2,3（遠い、中間、近い）
       # self.pcm_follow_distance = cp.vl["PCM_CRUISE_SM"]["DISTANCE_LINES"] #3,2,1
 
-    if self.CP.carFingerprint in (TSS2_CAR - RADAR_ACC_CAR) or (self.CP.flags & ToyotaFlags.SMART_DSU and not self.CP.flags & ToyotaFlags.RADAR_CAN_FILTER):
+    if self.CP.carFingerprint in (TSS2_CAR - RADAR_ACC_CAR) or (self.CP.flags & ToyotaFlags.SMART_DSU):
       # distance button is wired to the ACC module (camera or radar)
       prev_distance_button = self.distance_button
       if self.CP.carFingerprint in (TSS2_CAR - RADAR_ACC_CAR):
@@ -365,7 +365,7 @@ class CarState(CarStateBase):
         ("PRE_COLLISION", 33),
       ]
 
-    if CP.flags & ToyotaFlags.SMART_DSU and not CP.flags & ToyotaFlags.RADAR_CAN_FILTER:
+    if CP.flags & ToyotaFlags.SMART_DSU:
       messages += [
         ("SDSU", 100),
       ]

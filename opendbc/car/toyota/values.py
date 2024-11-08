@@ -61,9 +61,8 @@ class ToyotaFlags(IntFlag):
   SNG_WITHOUT_DSU = 512
   # these cars can utilize 2.0 m/s^2
   RAISED_ACCEL_LIMIT = 1024
-
   SECOC = 2048
-  RADAR_CAN_FILTER = 4096 #もう要らないか
+
   POWER_STEERING_TSS2 = 8192 #onroad/hud.ccのcp.getFlags()ビットテストを合わせること。
 
 class Footnote(Enum):
