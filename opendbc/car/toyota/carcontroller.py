@@ -199,8 +199,8 @@ class CarController(CarControllerBase):
         can_sends.append(lta_steer_2)
 
     # *** gas and brake ***
+    actuators_accel = actuators.accel
     if not self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
-      flag_RAISED_ACCEL_LIMIT = False
       comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
       # prohibit negative compensatory calculations when first activating long after accelerator depression or engagement
       if not CC.longActive:
@@ -215,12 +215,11 @@ class CarController(CarControllerBase):
         accel_offset = 0.
       # only calculate pcm_accel_cmd when long is active to prevent disengagement from accelerator depression
       if CC.longActive:
-        pcm_accel_cmd = clip(actuators.accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
-        pcm_accel_cmd = clip(actuators.accel, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
+        pcm_accel_cmd = clip(actuators_accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
+        pcm_accel_cmd = clip(actuators_accel, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
       else:
         pcm_accel_cmd = 0.
 
-      actuators_accel = actuators.accel
       try:
         with open('/tmp/cruise_info.txt','r') as fp:
           cruise_info_str = fp.read()
@@ -240,8 +239,6 @@ class CarController(CarControllerBase):
                     actuators_accel = 0
       except Exception as e:
         pass
-    else:
-      flag_RAISED_ACCEL_LIMIT = True
 
     # on entering standstill, send standstill request
     if CS.out.standstill and not self.CP.openpilotLongitudinalControl and not self.last_standstill and (self.CP.carFingerprint not in NO_STOP_TIMER_CAR):
@@ -268,62 +265,57 @@ class CarController(CarControllerBase):
         self.lock_flag = True
       self.now_gear = gear
 
+    # Press distance button until we are at the correct bar length. Only change while enabled to avoid skipping startup popup
+    if self.frame % 6 == 0 and self.CP.openpilotLongitudinalControl:
+      desired_distance = 4 - hud_control.leadDistanceBars
+      if CS.out.cruiseState.enabled and CS.pcm_follow_distance != desired_distance:
+        self.distance_button = not self.distance_button
+      else:
+        self.distance_button = 0
+
     if self.CP.openpilotLongitudinalControl:
-      if self.frame % 3 == 0:
-        # Press distance button until we are at the correct bar length. Only change while enabled to avoid skipping startup popup
-        if self.frame % 6 == 0 and self.CP.openpilotLongitudinalControl:
-          desired_distance = 4 - hud_control.leadDistanceBars
-          if CS.out.cruiseState.enabled and CS.pcm_follow_distance != desired_distance:
-            self.distance_button = not self.distance_button
-          else:
-            self.distance_button = 0
+      if self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT and self.frame % 3 == 0:
+        # internal PCM gas command can get stuck unwinding from negative accel so we apply a generous rate limit
+        pcm_accel_cmd = min(actuators.accel, self.accel + ACCEL_WINDUP_LIMIT) if CC.longActive else 0.0
+
+        # calculate amount of acceleration PCM should apply to reach target, given pitch
+        accel_due_to_pitch = math.sin(CC.orientationNED[1]) * ACCELERATION_DUE_TO_GRAVITY if len(CC.orientationNED) == 3 else 0.0
+        net_acceleration_request = pcm_accel_cmd + accel_due_to_pitch
 
         # For cars where we allow a higher max acceleration of 2.0 m/s^2, compensate for PCM request overshoot and imprecise braking
-        if flag_RAISED_ACCEL_LIMIT == False:
-          pass
-        elif self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT and CC.longActive and not CS.out.cruiseState.standstill:
-          # calculate amount of acceleration PCM should apply to reach target, given pitch
-          if len(CC.orientationNED) == 3:
-            accel_due_to_pitch = math.sin(CC.orientationNED[1]) * ACCELERATION_DUE_TO_GRAVITY
-          else:
-            accel_due_to_pitch = 0.0
-
-          net_acceleration_request = actuators.accel + accel_due_to_pitch
-
+        if self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT and CC.longActive and not CS.out.cruiseState.standstill:
           # let PCM handle stopping for now
           pcm_accel_compensation = 0.0
           if not stopping:
             pcm_accel_compensation = 2.0 * (CS.pcm_accel_net - net_acceleration_request)
 
           # prevent compensation windup
-          pcm_accel_compensation = clip(pcm_accel_compensation, actuators.accel - self.params.ACCEL_MAX,
-                                        actuators.accel - self.params.ACCEL_MIN)
+          pcm_accel_compensation = clip(pcm_accel_compensation, pcm_accel_cmd - self.params.ACCEL_MAX,
+                                        pcm_accel_cmd - self.params.ACCEL_MIN)
 
           self.pcm_accel_compensation = rate_limit(pcm_accel_compensation, self.pcm_accel_compensation, -0.01, 0.01)
-          pcm_accel_cmd = actuators.accel - self.pcm_accel_compensation
+          pcm_accel_cmd = pcm_accel_cmd - self.pcm_accel_compensation
 
-          # Along with rate limiting positive jerk below, this greatly improves gas response time
-          # Consider the net acceleration request that the PCM should be applying (pitch included)
-          if net_acceleration_request < 0.1 or stopping:
-            self.permit_braking = True
-          elif net_acceleration_request > 0.2:
-            self.permit_braking = False
         else:
           self.pcm_accel_compensation = 0.0
-          pcm_accel_cmd = actuators.accel
           self.permit_braking = True
 
-        if flag_RAISED_ACCEL_LIMIT:
-          pcm_accel_cmd = clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
-          
-          # internal PCM gas command can get stuck unwinding from negative accel so we apply a generous rate limit
-          pcm_accel_cmd = min(pcm_accel_cmd, self.accel + ACCEL_WINDUP_LIMIT) if CC.longActive else 0.0
+        # Along with rate limiting positive jerk above, this greatly improves gas response time
+        # Consider the net acceleration request that the PCM should be applying (pitch included)
+        if net_acceleration_request < 0.1 or stopping or not CC.longActive:
+          self.permit_braking = True
+        elif net_acceleration_request > 0.2:
+          self.permit_braking = False
 
-          can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, pcm_cancel_cmd, self.permit_braking, self.standstill_req, lead,
-                                                          CS.acc_type, fcw_alert, self.distance_button))
-        else:
-          can_sends.append(toyotacan.create_accel_command_cydia(self.packer, pcm_accel_cmd, actuators_accel, CS.out.aEgo, CC.longActive, pcm_cancel_cmd, self.standstill_req,
-                                                          lead, CS.acc_type, fcw_alert, self.distance_button))
+        pcm_accel_cmd = clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
+
+        can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, pcm_cancel_cmd, self.permit_braking, self.standstill_req, lead,
+                                                        CS.acc_type, fcw_alert, self.distance_button))
+        self.accel = pcm_accel_cmd
+
+      elif self.frame % 3 == 0:
+        can_sends.append(toyotacan.create_accel_command_cydia(self.packer, pcm_accel_cmd, actuators_accel, CS.out.aEgo, CC.longActive, pcm_cancel_cmd, self.standstill_req,
+                                                        lead, CS.acc_type, fcw_alert, self.distance_button))
         self.accel = pcm_accel_cmd
 
     else:
@@ -331,7 +323,7 @@ class CarController(CarControllerBase):
       if pcm_cancel_cmd:
         if self.CP.carFingerprint in UNSUPPORTED_DSU_CAR:
           can_sends.append(toyotacan.create_acc_cancel_command(self.packer))
-        elif flag_RAISED_ACCEL_LIMIT:
+        elif self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
           can_sends.append(toyotacan.create_accel_command(self.packer, 0, pcm_cancel_cmd, True, False, lead, CS.acc_type, False, self.distance_button))
         else:
           can_sends.append(toyotacan.create_accel_command_cydia(self.packer, 0, 0, 0, False, pcm_cancel_cmd, False, lead, CS.acc_type, False, self.distance_button))
