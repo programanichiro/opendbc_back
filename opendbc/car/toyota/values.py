@@ -64,6 +64,8 @@ class ToyotaFlags(IntFlag):
   SECOC = 2048
 
   POWER_STEERING_TSS2 = 8192 #onroad/hud.ccのcp.getFlags()ビットテストを合わせること。
+  # Irene's flags
+  DSU_BYPASS = 4096
 
 class Footnote(Enum):
   CAMRY = CarFootnote(
