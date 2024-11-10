@@ -54,7 +54,8 @@ class CarInterface(CarInterfaceBase):
 
     # Detect 0x343 on bus 2, if detected on bus 2 and is not TSS 2, it means DSU is bypassed
     if 0x343 in fingerprint[2] and candidate not in TSS2_CAR:
-      ret.flags |= ToyotaFlags.DSU_BYPASS.value
+      pass
+      # ret.flags |= ToyotaFlags.DSU_BYPASS.value #もしかしてSMART_DSUと共存できないのかも。
 
     # In TSS2 cars, the camera does long control
     found_ecus = [fw.ecu for fw in car_fw]
