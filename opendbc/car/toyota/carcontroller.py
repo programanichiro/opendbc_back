@@ -1,8 +1,9 @@
 import os
 import math
 from opendbc.car import carlog, apply_meas_steer_torque_limits, apply_std_steer_angle_limits, common_fault_avoidance, \
-                        make_tester_present_msg, rate_limit, structs, ACCELERATION_DUE_TO_GRAVITY
+                        make_tester_present_msg, rate_limit, structs, ACCELERATION_DUE_TO_GRAVITY, DT_CTRL
 from opendbc.car.can_definitions import CanData
+from opendbc.car.common.filter_simple import FirstOrderFilter
 from opendbc.car.common.numpy_fast import clip, interp
 from opendbc.car.secoc import add_mac, build_sync_mac
 from opendbc.car.interfaces import CarControllerBase
@@ -16,7 +17,10 @@ LongCtrlState = structs.CarControl.Actuators.LongControlState
 SteerControlType = structs.CarParams.SteerControlType
 VisualAlert = structs.CarControl.HUDControl.VisualAlert
 
+# The up limit allows the brakes/gas to unwind quickly leaving a stop,
+# the down limit roughly matches the rate of ACCEL_NET, reducing PCM compensation windup
 ACCEL_WINDUP_LIMIT = 0.5  # m/s^2 / frame
+ACCEL_WINDDOWN_LIMIT = -4.0 * DT_CTRL * 3  # m/s^2 / frame
 
 # LKA limits
 # EPS faults if you apply torque while the steering rate is above 100 deg/s for too long
@@ -50,11 +54,12 @@ class CarController(CarControllerBase):
     self.prohibit_neg_calculation = True
     self.distance_button = 0
 
-    self.pcm_accel_compensation = 0.0
+    self.pcm_accel_compensation = FirstOrderFilter(0, 0.5, DT_CTRL * 3)
     self.permit_braking = True
 
     self.packer = CANPacker(dbc_name)
     self.accel = 0
+    self.prev_accel = 0
 
     self.secoc_lka_message_counter = 0
     self.secoc_lta_message_counter = 0
@@ -276,7 +281,9 @@ class CarController(CarControllerBase):
     if self.CP.openpilotLongitudinalControl:
       if self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT and self.frame % 3 == 0:
         # internal PCM gas command can get stuck unwinding from negative accel so we apply a generous rate limit
-        pcm_accel_cmd = min(actuators.accel, self.accel + ACCEL_WINDUP_LIMIT) if CC.longActive else 0.0
+        pcm_accel_cmd = actuators.accel
+        if CC.longActive:
+          pcm_accel_cmd = rate_limit(pcm_accel_cmd, self.prev_accel, ACCEL_WINDDOWN_LIMIT, ACCEL_WINDUP_LIMIT)
 
         # calculate amount of acceleration PCM should apply to reach target, given pitch
         accel_due_to_pitch = math.sin(CC.orientationNED[1]) * ACCELERATION_DUE_TO_GRAVITY if len(CC.orientationNED) == 3 else 0.0
@@ -293,11 +300,10 @@ class CarController(CarControllerBase):
           pcm_accel_compensation = clip(pcm_accel_compensation, pcm_accel_cmd - self.params.ACCEL_MAX,
                                         pcm_accel_cmd - self.params.ACCEL_MIN)
 
-          self.pcm_accel_compensation = rate_limit(pcm_accel_compensation, self.pcm_accel_compensation, -0.01, 0.01)
-          pcm_accel_cmd = pcm_accel_cmd - self.pcm_accel_compensation
+          pcm_accel_cmd = pcm_accel_cmd - self.pcm_accel_compensation.update(pcm_accel_compensation)
 
         else:
-          self.pcm_accel_compensation = 0.0
+          self.pcm_accel_compensation.x = 0.0
           self.permit_braking = True
 
         # Along with rate limiting positive jerk above, this greatly improves gas response time
@@ -312,6 +318,7 @@ class CarController(CarControllerBase):
         can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, pcm_cancel_cmd, self.permit_braking, self.standstill_req, lead,
                                                         CS.acc_type, fcw_alert, self.distance_button))
         self.accel = pcm_accel_cmd
+        self.prev_accel = actuators.accel
 
       elif self.frame % 3 == 0:
         can_sends.append(toyotacan.create_accel_command_cydia(self.packer, pcm_accel_cmd, actuators_accel, CS.out.aEgo, CC.longActive, pcm_cancel_cmd, self.standstill_req,
