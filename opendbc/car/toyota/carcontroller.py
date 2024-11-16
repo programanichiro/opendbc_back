@@ -204,46 +204,6 @@ class CarController(CarControllerBase):
         can_sends.append(lta_steer_2)
 
     # *** gas and brake ***
-    actuators_accel = actuators.accel
-    if not self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
-      comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
-      # prohibit negative compensatory calculations when first activating long after accelerator depression or engagement
-      if not CC.longActive:
-        self.prohibit_neg_calculation = True
-      # don't reset until a reasonable compensatory value is reached
-      if CS.pcm_neutral_force > comp_thresh * self.CP.mass:
-        self.prohibit_neg_calculation = False
-      # limit minimum to only positive until first positive is reached after engagement, don't calculate when long isn't active
-      if CC.longActive and not self.prohibit_neg_calculation:
-        accel_offset = CS.pcm_neutral_force / self.CP.mass
-      else:
-        accel_offset = 0.
-      # only calculate pcm_accel_cmd when long is active to prevent disengagement from accelerator depression
-      if CC.longActive:
-        pcm_accel_cmd = clip(actuators_accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
-        pcm_accel_cmd = clip(actuators_accel, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
-      else:
-        pcm_accel_cmd = 0.
-
-      try:
-        with open('/tmp/cruise_info.txt','r') as fp:
-          cruise_info_str = fp.read()
-          if cruise_info_str:
-            if cruise_info_str == "1" or cruise_info_str == ",1": #クリープしたければ以下を通さない。
-              with open('/tmp/accel_engaged.txt','r') as fp:
-                accel_engaged_str = fp.read()
-                eP_iP = False
-                if int(accel_engaged_str) == 4 and os.path.exists('/tmp/red_signal_eP_iP_set.txt'):
-                  with open('/tmp/red_signal_eP_iP_set.txt','r') as fp:
-                    red_signal_eP_iP_set_str = fp.read()
-                    if red_signal_eP_iP_set_str and int(red_signal_eP_iP_set_str) == 1:
-                      eP_iP = True
-                if int(accel_engaged_str) == 3 or eP_iP == True: #ワンペダルモードでもeP(一時的な赤信号手前を除く)では通さない
-                  if pcm_accel_cmd > 0:
-                    pcm_accel_cmd = 0
-                    actuators_accel = 0
-      except Exception as e:
-        pass
 
     # on entering standstill, send standstill request
     if CS.out.standstill and not self.CP.openpilotLongitudinalControl and not self.last_standstill and (self.CP.carFingerprint not in NO_STOP_TIMER_CAR):
@@ -321,6 +281,43 @@ class CarController(CarControllerBase):
         self.prev_accel = actuators.accel
 
       elif self.frame % 3 == 0:
+        actuators_accel = actuators.accel
+        comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
+        # prohibit negative compensatory calculations when first activating long after accelerator depression or engagement
+        if not CC.longActive:
+          self.prohibit_neg_calculation = True
+        # don't reset until a reasonable compensatory value is reached
+        if CS.pcm_neutral_force > comp_thresh * self.CP.mass:
+          self.prohibit_neg_calculation = False
+        # limit minimum to only positive until first positive is reached after engagement, don't calculate when long isn't active
+        if CC.longActive and not self.prohibit_neg_calculation:
+          accel_offset = CS.pcm_neutral_force / self.CP.mass
+        else:
+          accel_offset = 0.
+        # only calculate pcm_accel_cmd when long is active to prevent disengagement from accelerator depression
+        if CC.longActive:
+          pcm_accel_cmd = clip(actuators_accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
+        else:
+          pcm_accel_cmd = 0.
+        try:
+          with open('/tmp/cruise_info.txt','r') as fp:
+            cruise_info_str = fp.read()
+            if cruise_info_str:
+              if cruise_info_str == "1" or cruise_info_str == ",1": #クリープしたければ以下を通さない。
+                with open('/tmp/accel_engaged.txt','r') as fp:
+                  accel_engaged_str = fp.read()
+                  eP_iP = False
+                  if int(accel_engaged_str) == 4 and os.path.exists('/tmp/red_signal_eP_iP_set.txt'):
+                    with open('/tmp/red_signal_eP_iP_set.txt','r') as fp:
+                      red_signal_eP_iP_set_str = fp.read()
+                      if red_signal_eP_iP_set_str and int(red_signal_eP_iP_set_str) == 1:
+                        eP_iP = True
+                  if int(accel_engaged_str) == 3 or eP_iP == True: #ワンペダルモードでもeP(一時的な赤信号手前を除く)では通さない
+                    if pcm_accel_cmd > 0:
+                      pcm_accel_cmd = 0
+                      actuators_accel = 0
+        except Exception as e:
+          pass
         can_sends.append(toyotacan.create_accel_command_cydia(self.packer, pcm_accel_cmd, actuators_accel, CS.out.aEgo, CC.longActive, pcm_cancel_cmd, self.standstill_req,
                                                         lead, CS.acc_type, fcw_alert, self.distance_button))
         self.accel = pcm_accel_cmd
