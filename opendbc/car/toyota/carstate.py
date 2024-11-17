@@ -272,7 +272,7 @@ class CarState(CarStateBase):
       # with open('/tmp/debug_out_v','w') as fp:
       #   fp.write("lkas_enabled:%d,%d,<%d,%d>" % (self.lkas_enabled,self.prev_lkas_enabled,steer_always,ret.cruiseState.available))
       with open('/tmp/cruise_available.txt','w') as fp:
-        fp.write('%d' % ret.cruiseState.available)
+        fp.write('%d' % (ret.cruiseState.available and ret.gearShifter != structs.CarState.GearShifter.reverse)) #念の為バック時にはfalse
       if not self.prev_lkas_enabled and self.lkas_enabled and steer_always == 0:# and ret.cruiseState.available:
         with open('/tmp/steer_always.txt','w') as fp:
          fp.write('%d' % 1)
