@@ -61,11 +61,11 @@ class CarController(CarControllerBase):
 
     self.deque = deque([0] * 300, maxlen=300)
 
-    self.pid = PIDController(0.5, 0.25, k_f=0.0, k_d=0.125,
+    self.pid = PIDController(1, 0.0, k_f=0.0, k_d=0.0,
                              pos_limit=self.params.ACCEL_MAX, neg_limit=self.params.ACCEL_MIN,
                              rate=1 / DT_CTRL / 3)
 
-    self.aego = FirstOrderFilter(0.0, 0.5, DT_CTRL)
+    self.aego = FirstOrderFilter(0.0, 0.25, DT_CTRL)
 
     self.error_rate = FirstOrderFilter(0.0, 0.25, DT_CTRL * 3)
     self.prev_error = 0.0
@@ -74,7 +74,6 @@ class CarController(CarControllerBase):
     self.net_acceleration_request = FirstOrderFilter(0, 0.15, DT_CTRL * 3)
     self.pcm_accel_cmd = FirstOrderFilter(0, 0.15 + 0.2, DT_CTRL * 3)
 
-    self.accel_pid = PIDController(2.0, 0.5, 1 / (DT_CTRL * 3))
     self.pcm_accel_compensation = FirstOrderFilter(0, 0.5, DT_CTRL * 3)
 
     # the PCM's reported acceleration request can sometimes mismatch aEgo, close the loop
@@ -84,10 +83,8 @@ class CarController(CarControllerBase):
     # so we error correct on the filtered PCM acceleration request using the actuator delay.
     # TODO: move the delay into the interface
     self.pcm_accel_net = FirstOrderFilter(0, self.CP.longitudinalActuatorDelay, DT_CTRL * 3)
-    self.net_acceleration_request = FirstOrderFilter(0, 0.15, DT_CTRL * 3)
     if not any(fw.ecu == Ecu.hybrid for fw in self.CP.carFw):
       self.pcm_accel_net.update_alpha(self.CP.longitudinalActuatorDelay + 0.2)
-      self.net_acceleration_request.update_alpha(self.CP.longitudinalActuatorDelay + 0.2)
 
     self.packer = CANPacker(dbc_names[Bus.pt])
     self.accel = 0
@@ -245,12 +242,14 @@ class CarController(CarControllerBase):
     # *** gas and brake ***
 
     prev_aego = self.aego.x
-    self.aego.update(CS.out.aEgo)
+    self.aego.update(CS.out.aEgoBlended)
     jEgo = (self.aego.x - prev_aego) / DT_CTRL
-    future_aego = CS.out.aEgo + jEgo * 0.15  # TODO: only for hybrid
+    # TODO: adjust for hybrid
+    future_aego = CS.out.aEgoBlended + jEgo * 0.35
 
     self.debug = jEgo
     self.debug2 = future_aego
+    self.debug3 = self.aego.x
 
     # on entering standstill, send standstill request
     if CS.out.standstill and not self.CP.openpilotLongitudinalControl and not self.last_standstill and (self.CP.carFingerprint not in NO_STOP_TIMER_CAR):
@@ -304,7 +303,7 @@ class CarController(CarControllerBase):
           # filter ACCEL_NET so it more closely matches aEgo delay for error correction
           # self.pcm_accel_net.update(CS.pcm_accel_net)
 
-          error = pcm_accel_cmd - CS.out.aEgo
+          error = pcm_accel_cmd - CS.out.aEgoBlended
           self.error_rate.update((error - self.prev_error) / (DT_CTRL * 3))
 
           # self.debug2 = self.error_rate.x
@@ -319,11 +318,12 @@ class CarController(CarControllerBase):
             self.pid.pos_limit = self.params.ACCEL_MAX - pcm_accel_cmd
 
             # TODO: freeze_integrator when stopping or at standstill?
-            #pcm_accel_compensation = self.pid.update(self.deque[round(-40 / 3)] - CS.out.aEgo,
+            #pcm_accel_compensation = self.pid.update(self.deque[round(-40 / 3)] - CS.out.aEgoBlended,
             pcm_accel_compensation = self.pid.update(self.pcm_accel_cmd.x - future_aego,
+            # pcm_accel_compensation = self.pid.update(pcm_accel_cmd - future_aego,
                                                      error_rate=self.error_rate.x)  #, feedforward=pcm_accel_cmd)
             pcm_accel_cmd += self.pcm_accel_compensation.update(pcm_accel_compensation)
-            #pcm_accel_cmd += pcm_accel_compensation
+            # pcm_accel_cmd += pcm_accel_compensation
           else:
             self.pid.reset()
             self.pcm_accel_compensation.x = 0.0
@@ -346,7 +346,7 @@ class CarController(CarControllerBase):
             # TODO: check if maintaining the offset from before stopping is beneficial
             self.pcm_accel_net_offset.x = 0.0
           else:
-            new_pcm_accel_net -= self.pcm_accel_net_offset.update((self.pcm_accel_net.x - accel_due_to_pitch) - CS.out.aEgo)
+            new_pcm_accel_net -= self.pcm_accel_net_offset.update((self.pcm_accel_net.x - accel_due_to_pitch) - CS.out.aEgoBlended)
 
           # let PCM handle stopping for now, error correct on a delayed acceleration request
           pcm_accel_compensation = 0.0
@@ -369,7 +369,6 @@ class CarController(CarControllerBase):
           self.pcm_accel_net_offset.x = 0.0
           self.net_acceleration_request.x = 0.0
           self.pcm_accel_net.x = CS.pcm_accel_net
-          self.accel_pid.reset()
           self.permit_braking = True
 
         # Along with rate limiting positive jerk above, this greatly improves gas response time
