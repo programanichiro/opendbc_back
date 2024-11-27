@@ -165,7 +165,7 @@ class CarController(CarControllerBase):
         # with open('/tmp/debug_out_v','w') as fp:
         #   fp.write("ct:%d,%+.2f/%+.2f(%+.3f)" % (int(l),new_steer,new_steer0,new_steer-new_steer0))
     try:
-      with open('/tmp/lane_d_info.txt','r') as fp:
+      with open('/dev/shm/lane_d_info.txt','r') as fp:
         lane_d_info_str = fp.read()
         if lane_d_info_str:
           lane_d_info = float(lane_d_info_str)
@@ -417,15 +417,15 @@ class CarController(CarControllerBase):
         else:
           pcm_accel_cmd = 0.
         try:
-          with open('/tmp/cruise_info.txt','r') as fp:
+          with open('/dev/shm/cruise_info.txt','r') as fp:
             cruise_info_str = fp.read()
             if cruise_info_str:
               if cruise_info_str == "1" or cruise_info_str == ",1": #クリープしたければ以下を通さない。
-                with open('/tmp/accel_engaged.txt','r') as fp:
+                with open('/dev/shm/accel_engaged.txt','r') as fp:
                   accel_engaged_str = fp.read()
                   eP_iP = False
-                  if int(accel_engaged_str) == 4 and os.path.exists('/tmp/red_signal_eP_iP_set.txt'):
-                    with open('/tmp/red_signal_eP_iP_set.txt','r') as fp:
+                  if int(accel_engaged_str) == 4 and os.path.exists('/dev/shm/red_signal_eP_iP_set.txt'):
+                    with open('/dev/shm/red_signal_eP_iP_set.txt','r') as fp:
                       red_signal_eP_iP_set_str = fp.read()
                       if red_signal_eP_iP_set_str and int(red_signal_eP_iP_set_str) == 1:
                         eP_iP = True
