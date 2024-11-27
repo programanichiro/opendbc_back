@@ -124,12 +124,12 @@ def create_ui_command(packer, steer, chime, left_line, right_line, left_lane_dep
   steer_always = 0
   cruise_available = 0
   try:
-    with open('/tmp/steer_always.txt','r') as fp:
+    with open('/dev/shm/steer_always.txt','r') as fp:
       steer_always_str = fp.read()
       if steer_always_str:
         if int(steer_always_str) >= 1:
           steer_always = 2
-    with open('/tmp/cruise_available.txt','r') as fp:
+    with open('/dev/shm/cruise_available.txt','r') as fp:
       cruise_available_str = fp.read()
       if cruise_available_str:
         if int(cruise_available_str) >= 1:

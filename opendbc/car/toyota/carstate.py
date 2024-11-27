@@ -71,7 +71,7 @@ class CarState(CarStateBase):
     ret = structs.CarState()
     if self.knight_scanner_bit3_ct == 0:
       try:
-        with open('/tmp/knight_scanner_bit3.txt','r') as fp:
+        with open('/dev/shm/knight_scanner_bit3.txt','r') as fp:
           knight_scanner_bit3_str = fp.read()
           if knight_scanner_bit3_str:
             self.knight_scanner_bit3  = int(knight_scanner_bit3_str)
@@ -157,7 +157,7 @@ class CarState(CarStateBase):
 
     self.steeringAngleDegOrg = ret.steeringAngleDeg #回転先予想する前のオリジナル値
     if (self.knight_scanner_bit3_ct & 0x3) == 1:
-      with open('/tmp/steer_ang_info.txt','w') as fp:
+      with open('/dev/shm/steer_ang_info.txt','w') as fp:
        fp.write('%f' % (self.steeringAngleDegOrg))
     # if self.CP.carFingerprint not in TSS2_CAR:
     if (self.knight_scanner_bit3 & 0x04) and abs(self.steeringAngleDegOrg) < 35: # knight_scanner_bit3.txt ⚪︎⚪︎⚫︎をONで有効, 35度以上急カーブは補正止める
@@ -206,7 +206,7 @@ class CarState(CarStateBase):
     new_brake_state = bool(cp.vl["ESP_CONTROL"]['BRAKE_LIGHTS_ACC'] or cp.vl["BRAKE_MODULE"]["BRAKE_PRESSED"] != 0)
     if self.brake_state != new_brake_state:
       self.brake_state = new_brake_state
-      with open('/tmp/brake_light_state.txt','w') as fp:
+      with open('/dev/shm/brake_light_state.txt','w') as fp:
         fp.write('%d' % (new_brake_state))
 
     if self.CP.carFingerprint in UNSUPPORTED_DSU_CAR:
@@ -261,7 +261,7 @@ class CarState(CarStateBase):
         self.prev_lkas_enabled = self.lkas_enabled
       steer_always = 0
       try:
-        with open('/tmp/steer_always.txt','r') as fp:
+        with open('/dev/shm/steer_always.txt','r') as fp:
           steer_always_str = fp.read()
           if steer_always_str:
             if int(steer_always_str) >= 1:
@@ -270,15 +270,15 @@ class CarState(CarStateBase):
         pass
       # with open('/tmp/debug_out_v','w') as fp:
       #   fp.write("lkas_enabled:%d,%d,<%d,%d>" % (self.lkas_enabled,self.prev_lkas_enabled,steer_always,ret.cruiseState.available))
-      with open('/tmp/cruise_available.txt','w') as fp:
+      with open('/dev/shm/cruise_available.txt','w') as fp:
         fp.write('%d' % (ret.cruiseState.available and ret.gearShifter != structs.CarState.GearShifter.reverse)) #念の為バック時にはfalse
       if not self.prev_lkas_enabled and self.lkas_enabled and steer_always == 0:# and ret.cruiseState.available:
-        with open('/tmp/steer_always.txt','w') as fp:
+        with open('/dev/shm/steer_always.txt','w') as fp:
          fp.write('%d' % 1)
         with open('/data/steer_always.txt','w') as fp:
          fp.write('%d' % 1)
       elif (self.prev_lkas_enabled and not self.lkas_enabled and steer_always != 0):# or not ret.cruiseState.available:
-        with open('/tmp/steer_always.txt','w') as fp:
+        with open('/dev/shm/steer_always.txt','w') as fp:
          fp.write('%d' % 0)
         with open('/data/steer_always.txt','w') as fp:
          fp.write('%d' % 0)
