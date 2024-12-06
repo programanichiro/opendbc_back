@@ -61,7 +61,10 @@ class CarInterface(CarInterfaceBase):
     ret.enableDsu = len(found_ecus) > 0 and Ecu.dsu not in found_ecus and candidate not in (NO_DSU_CAR | UNSUPPORTED_DSU_CAR) \
                                         and not (ret.flags & ToyotaFlags.SMART_DSU) and not (ret.flags & ToyotaFlags.DSU_BYPASS.value)
 
-    if Params().get_bool("AccelMethodSwitch") == True: # and candidate in (CAR.LEXUS_ES_TSS2,) and Ecu.hybrid not in found_ecus:
+    if Ecu.hybrid in found_ecus:
+      ret.flags |= ToyotaFlags.HYBRID.value
+
+    if Params().get_bool("AccelMethodSwitch") == True: # and candidate in (CAR.LEXUS_ES_TSS2,) and not (ret.flags & ToyotaFlags.HYBRID.value):
       ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value
 
     if candidate == CAR.TOYOTA_PRIUS:
@@ -154,9 +157,6 @@ class CarInterface(CarInterfaceBase):
     if not ret.openpilotLongitudinalControl:
       ret.safetyConfigs[0].safetyParam |= Panda.FLAG_TOYOTA_STOCK_LONGITUDINAL
 
-    if Ecu.hybrid in found_ecus: #ハイブリッド判定法
-      ret.flags |= ToyotaFlags.HYBRID.value
-
     # min speed to enable ACC. if car can do stop and go, then set enabling speed
     # to a negative value, so it won't matter.
     ret.minEnableSpeed = -1. if stop_and_go else MIN_ACC_SPEED
@@ -169,6 +169,10 @@ class CarInterface(CarInterfaceBase):
       ret.vEgoStopping = 0.25
       ret.vEgoStarting = 0.25
       ret.stoppingDecelRate = 0.3  # reach stopping target smoothly
+
+      # Hybrids have much quicker longitudinal actuator response
+      if ret.flags & ToyotaFlags.HYBRID.value:
+        ret.longitudinalActuatorDelay = 0.05
 
     return ret
 
