@@ -373,6 +373,29 @@ class CarController(CarControllerBase):
 
       elif self.frame % 3 == 0:
         actuators_accel = actuators.accel
+
+        pcm_accel_cmd = actuators.accel
+        if not (self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT):
+          if actuators.longControlState == LongCtrlState.pid:
+            # GVC does not overshoot ego acceleration when starting from stop, but still has a similar delay
+            if not self.CP.flags & ToyotaFlags.SECOC.value:
+              a_ego_blended = interp(CS.out.vEgo, [1.0, 2.0], [CS.gvc, CS.out.aEgo])
+            else:
+              a_ego_blended = CS.out.aEgo
+
+            error = pcm_accel_cmd - a_ego_blended
+            self.error_rate.update((error - self.prev_error) / (DT_CTRL * 3))
+            self.prev_error = error
+
+            pcm_accel_cmd = self.long_pid.update(error, error_rate=self.error_rate.x,
+                                                 speed=CS.out.vEgo,
+                                                 feedforward=pcm_accel_cmd)
+          else:
+            self.long_pid.reset()
+            self.error_rate.x = 0.0
+            self.prev_error = 0.0
+        actuators_accel = pcm_accel_cmd
+
         comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
         # prohibit negative compensatory calculations when first activating long after accelerator depression or engagement
         if not CC.longActive:
