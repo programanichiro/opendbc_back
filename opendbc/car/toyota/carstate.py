@@ -8,7 +8,7 @@ from opendbc.car.common.filter_simple import FirstOrderFilter
 from opendbc.car.common.numpy_fast import mean
 from opendbc.car.interfaces import CarStateBase
 from opendbc.car.toyota.values import ToyotaFlags, CAR, DBC, STEER_THRESHOLD, NO_STOP_TIMER_CAR, \
-                                                  TSS2_CAR, RADAR_ACC_CAR, EPS_SCALE, UNSUPPORTED_DSU_CAR, SECOC_CAR
+                                                  TSS2_CAR, RADAR_ACC_CAR, EPS_SCALE, UNSUPPORTED_DSU_CAR
 
 ButtonType = structs.CarState.ButtonEvent.Type
 SteerControlType = structs.CarParams.SteerControlType
@@ -61,7 +61,6 @@ class CarState(CarStateBase):
 
     self.acc_type = 1
     self.lkas_hud = {}
-    self.pcm_accel_net = 0.0
     self.gvc = 0.0
     self.secoc_synchronization = None
 
@@ -87,22 +86,6 @@ class CarState(CarStateBase):
 
     if not self.CP.flags & ToyotaFlags.SECOC.value:
       self.gvc = cp.vl["VSC1S07"]["GVC"]
-
-    # Describes the acceleration request from the PCM if on flat ground, may be higher or lower if pitched
-    # CLUTCH->ACCEL_NET is only accurate for gas, PCM_CRUISE->ACCEL_NET is only accurate for brake
-    # These signals only have meaning when ACC is active
-    if "CLUTCH" in cp.vl:
-      self.pcm_accel_net = max(cp.vl["CLUTCH"]["ACCEL_NET"], 0.0)
-
-      # Sometimes ACC_BRAKING can be 1 while showing we're applying gas already
-      if cp.vl["PCM_CRUISE"]["ACC_BRAKING"]:
-        self.pcm_accel_net += min(cp.vl["PCM_CRUISE"]["ACCEL_NET"], 0.0)
-
-        # add creeping force at low speeds only for braking, CLUTCH->ACCEL_NET already shows this
-        neutral_accel = max(cp.vl["PCM_CRUISE"]["NEUTRAL_FORCE"] / self.CP.mass, 0.0)
-        self.pcm_accel_net += neutral_accel
-    else:
-      self.pcm_accel_net = cp.vl["PCM_CRUISE"]["NEUTRAL_FORCE"] / self.CP.mass
 
     ret.doorOpen = any([cp.vl["BODY_CONTROL_STATE"]["DOOR_OPEN_FL"], cp.vl["BODY_CONTROL_STATE"]["DOOR_OPEN_FR"],
                         cp.vl["BODY_CONTROL_STATE"]["DOOR_OPEN_RL"], cp.vl["BODY_CONTROL_STATE"]["DOOR_OPEN_RR"]])
@@ -249,7 +232,7 @@ class CarState(CarStateBase):
       ret.cruiseState.standstill = self.pcm_acc_status == 7
     ret.cruiseState.enabled = bool(cp.vl["PCM_CRUISE"]["CRUISE_ACTIVE"])
     ret.cruiseState.nonAdaptive = self.pcm_acc_status in (1, 2, 3, 4, 5, 6)
-    self.pcm_neutral_force = cp.vl["PCM_CRUISE"]["NEUTRAL_FORCE"] #self.pcm_accel_netを使う手もあり（/ self.CP.massに注意）
+    self.pcm_neutral_force = cp.vl["PCM_CRUISE"]["NEUTRAL_FORCE"]
 
     ret.genericToggle = bool(cp.vl["LIGHT_STALK"]["AUTO_HIGH_BEAM"])
     ret.espDisabled = cp.vl["ESP_CONTROL"]["TC_DISABLED"] != 0
@@ -347,9 +330,6 @@ class CarState(CarStateBase):
         pt_messages.append(("GAS_PEDAL_HYBRID", 33))
       else:
         pt_messages.append(("GAS_PEDAL", 33))
-
-    if CP.carFingerprint in (TSS2_CAR - SECOC_CAR - {CAR.LEXUS_NX_TSS2, CAR.TOYOTA_ALPHARD_TSS2, CAR.LEXUS_IS_TSS2}):
-      pt_messages.append(("CLUTCH", 15))
 
     if CP.carFingerprint in UNSUPPORTED_DSU_CAR:
       pt_messages.append(("DSU_CRUISE", 5))
