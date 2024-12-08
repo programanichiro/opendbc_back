@@ -324,6 +324,25 @@ class CarController(CarControllerBase):
 
         pcm_accel_cmd = clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
 
+        try:
+          with open('/dev/shm/cruise_info.txt','r') as fp:
+            cruise_info_str = fp.read()
+            if cruise_info_str:
+              if cruise_info_str == "1" or cruise_info_str == ",1": #クリープしたければ以下を通さない。
+                with open('/dev/shm/accel_engaged.txt','r') as fp:
+                  accel_engaged_str = fp.read()
+                  eP_iP = False
+                  if int(accel_engaged_str) == 4 and os.path.exists('/dev/shm/red_signal_eP_iP_set.txt'):
+                    with open('/dev/shm/red_signal_eP_iP_set.txt','r') as fp:
+                      red_signal_eP_iP_set_str = fp.read()
+                      if red_signal_eP_iP_set_str and int(red_signal_eP_iP_set_str) == 1:
+                        eP_iP = True
+                  if int(accel_engaged_str) == 3 or eP_iP == True: #ワンペダルモードでもeP(一時的な赤信号手前を除く)では通さない
+                    if pcm_accel_cmd > 0:
+                      pcm_accel_cmd = 0
+                      # actuators_accel = 0
+        except Exception as e:
+          pass
         can_sends.append(toyotacan.create_accel_command(self.packer, pcm_accel_cmd, pcm_cancel_cmd, self.permit_braking, self.standstill_req, lead,
                                                         CS.acc_type, fcw_alert, self.distance_button))
         self.accel = pcm_accel_cmd
