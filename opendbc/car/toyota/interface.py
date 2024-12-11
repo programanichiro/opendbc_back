@@ -64,9 +64,8 @@ class CarInterface(CarInterfaceBase):
     if Ecu.hybrid in found_ecus:
       ret.flags |= ToyotaFlags.HYBRID.value
 
-    # TODO: expand to the rest of the cars
-    if Params().get_bool("AccelMethodSwitch") == True: # and candidate in (CAR.LEXUS_ES_TSS2,) and not (ret.flags & ToyotaFlags.HYBRID.value):
-      ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value
+    if Params().get_bool("AccelMethodSwitch") == True: # ichiropilot
+      ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value #TSSPでも使えるようになるのか？
 
     if candidate == CAR.TOYOTA_PRIUS:
       stop_and_go = True
@@ -167,6 +166,8 @@ class CarInterface(CarInterfaceBase):
 
     ret.stoppingDecelRate = 0.3
     if candidate in TSS2_CAR:
+      ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value
+
       ret.vEgoStopping = 0.25
       ret.vEgoStarting = 0.25
       ret.stoppingDecelRate = 0.3  # reach stopping target smoothly
