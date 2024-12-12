@@ -166,7 +166,7 @@ class CarInterface(CarInterfaceBase):
 
     ret.stoppingDecelRate = 0.3
     if candidate in TSS2_CAR:
-      ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value
+      # ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value #イチロウパイロットでは選択制にしたい
 
       ret.vEgoStopping = 0.25
       ret.vEgoStarting = 0.25
