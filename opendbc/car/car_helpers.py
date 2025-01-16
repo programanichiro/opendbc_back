@@ -92,6 +92,7 @@ def fingerprint(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_mu
 
   start_time = time.monotonic()
   Params().put_bool('DisengageOnAccelerator',False) #アクセル解除ボタン強制OFF
+  Params().put_bool('IsMetric',True) #km/hを使う。イチロウパイロットはmphの車で多分うまく動かない
 
   if not skip_fw_query:
     if cached_params is not None and cached_params.carName != "mock" and len(cached_params.carFw) > 0 and \
