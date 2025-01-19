@@ -1,6 +1,7 @@
 import os
 import math
 import numpy as np
+from collections import deque
 from opendbc.car import Bus, carlog, apply_meas_steer_torque_limits, apply_std_steer_angle_limits, common_fault_avoidance, \
                         make_tester_present_msg, rate_limit, structs, ACCELERATION_DUE_TO_GRAVITY, DT_CTRL
 from opendbc.car.can_definitions import CanData
@@ -44,9 +45,9 @@ COMPENSATORY_CALCULATION_THRESHOLD_V = [-0.2, -0.2, -0.05]  # m/s^2
 COMPENSATORY_CALCULATION_THRESHOLD_BP = [0., 20., 32.]  # m/s
 
 def get_long_tune(CP, params):
-  kiBP = [0.]
+  kiBP = [5, 35]
   if CP.carFingerprint in TSS2_CAR:
-    kiV = [0.25]
+    kiV = [0.25, 0.25]
 
   else:
     if CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
@@ -75,6 +76,14 @@ class CarController(CarControllerBase):
     self.steer_rate_counter = 0
     self.prohibit_neg_calculation = True
     self.distance_button = 0
+    self.debug = 0
+    self.debug2 = 0
+    self.debug3 = 0
+
+    self.brake_force_filter = FirstOrderFilter(0.0, 1, DT_CTRL * 3)
+    self.fdrv_filter = FirstOrderFilter(0.0, 1, DT_CTRL * 3)
+
+    self.deque = deque([0] * 50, maxlen=50)
 
     # *** start long control state ***
     self.long_pid = get_long_tune(self.CP, self.params)
@@ -290,13 +299,30 @@ class CarController(CarControllerBase):
         j_ego = (self.aego.x - prev_aego) / (DT_CTRL * 3)
         a_ego_future = a_ego_blended + j_ego * 0.5
 
+        prev_brake = self.brake_force_filter.x
+        prev_fdrv = self.fdrv_filter.x
+        self.brake_force_filter.update(CS.out.brake)
+        self.fdrv_filter.update(CS.fdrv)
+        self.debug = (prev_brake - self.brake_force_filter.x) / self.CP.mass / .03
+        self.debug2 = self.brake_force_filter.x
+        self.debug3 = CS.out.brake
+
         if actuators.longControlState == LongCtrlState.pid:
           error_future = pcm_accel_cmd - a_ego_future
+
+          # error_future = self.deque[-50 // 3] - CS.out.aEgo
+          print((prev_brake - self.brake_force_filter.x) / 0.03)
+          self.deque.append(pcm_accel_cmd)
+          fdrv_rate = (prev_fdrv - self.fdrv_filter.x) / self.CP.mass / .03
+
           pcm_accel_cmd = self.long_pid.update(error_future,
                                                speed=CS.out.vEgo,
-                                               feedforward=pcm_accel_cmd)
+                                               feedforward=pcm_accel_cmd + self.debug / 2 + fdrv_rate / 2)
         else:
           self.long_pid.reset()
+          self.deque = deque([0] * 50, maxlen=50)
+          self.brake_force_filter.x = 0
+          self.fdrv_filter.x = 0
 
         # Along with rate limiting positive jerk above, this greatly improves gas response time
         # Consider the net acceleration request that the PCM should be applying (pitch included)
@@ -437,6 +463,9 @@ class CarController(CarControllerBase):
     new_actuators.steerOutputCan = apply_steer
     new_actuators.steeringAngleDeg = float(self.last_angle)
     new_actuators.accel = self.accel
+    new_actuators.debug = self.debug
+    new_actuators.debug2 = self.debug2
+    new_actuators.debug3 = self.debug3
 
     self.frame += 1
     return new_actuators, can_sends

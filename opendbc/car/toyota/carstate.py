@@ -84,6 +84,8 @@ class CarState(CarStateBase):
     self.knight_scanner_bit3_ct = (self.knight_scanner_bit3_ct + 1) % 101
     cp_acc = cp_cam if (self.CP.carFingerprint in (TSS2_CAR - RADAR_ACC_CAR) or bool(self.CP.flags & ToyotaFlags.DSU_BYPASS.value)) else cp
 
+    # self.brake_force = cp.vl['BRAKE']['BRAKE_FORCE']
+
     if not self.CP.flags & ToyotaFlags.SECOC.value:
       self.gvc = cp.vl["VSC1S07"]["GVC"]
 
@@ -110,6 +112,11 @@ class CarState(CarStateBase):
         ret.stockAeb = bool(cp_acc.vl["PRE_COLLISION"]["PRECOLLISION_ACTIVE"] and cp_acc.vl["PRE_COLLISION"]["FORCE"] < -1e-5)
       if self.CP.carFingerprint != CAR.TOYOTA_MIRAI:
         ret.engineRpm = cp.vl["ENGINE_RPM"]["RPM"]
+
+      if self.CP.flags & ToyotaFlags.HYBRID:
+        ret.gas = cp.vl["GAS_PEDAL_HYBRID"]["GAS_PEDAL"]
+        ret.brake = -cp.vl["BRAKE"]["BRAKE_FORCE"]
+        self.fdrv = cp.vl["GEAR_PACKET_HYBRID"]["FDRVREAL"]
 
     ret.wheelSpeeds = self.get_wheel_speeds(
       cp.vl["WHEEL_SPEEDS"]["WHEEL_SPEED_FL"],
@@ -321,6 +328,11 @@ class CarState(CarStateBase):
       pt_messages.append(("VSC1S07", 20))
       if CP.carFingerprint not in [CAR.TOYOTA_MIRAI]:
         pt_messages.append(("ENGINE_RPM", 42))
+
+      if CP.flags & ToyotaFlags.HYBRID:
+        pt_messages.append(("BRAKE", 83))
+        pt_messages.append(("GAS_PEDAL_HYBRID", 33))
+        pt_messages.append(("GEAR_PACKET_HYBRID", 33))
 
       pt_messages += [
         ("GEAR_PACKET", 1),

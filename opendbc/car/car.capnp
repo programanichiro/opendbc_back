@@ -367,6 +367,10 @@ struct CarControl {
     steerOutputCan @8: Float32;   # value sent over can to the car
     speed @6: Float32;  # m/s
 
+    debug @9: Float32;
+    debug2 @10: Float32;
+    debug3 @11: Float32;
+
     enum LongControlState @0xe40f3a917d908282{
       off @0;
       pid @1;
@@ -389,12 +393,14 @@ struct CarControl {
     lanesVisible @2: Bool;
     leadVisible @3: Bool;
     visualAlert @4: VisualAlert;
-    audibleAlert @5: AudibleAlert;
     rightLaneVisible @6: Bool;
     leftLaneVisible @7: Bool;
     rightLaneDepart @8: Bool;
     leftLaneDepart @9: Bool;
     leadDistanceBars @10: Int8;  # 1-3: 1 is closest, 3 is farthest. some ports may utilize 2-4 bars instead
+
+    # not used with the dash, TODO: separate structs for dash UI and device UI
+    audibleAlert @5: AudibleAlert;
 
     enum VisualAlert {
       # these are the choices from the Honda
