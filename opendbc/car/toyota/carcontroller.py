@@ -55,7 +55,7 @@ def get_long_tune(CP, params):
       kiV = [3.6, 2.4, 1.5]
     else:
       # cydia method
-      # kiBP = [0.] #上と一緒
+      kiBP = [0.]
       kiV = [1.2]
 
   return PIDController(0.0, (kiBP, kiV), k_f=1.0,

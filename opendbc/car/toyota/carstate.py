@@ -104,9 +104,6 @@ class CarState(CarStateBase):
       can_gear = int(cp.vl["GEAR_PACKET_HYBRID"]["GEAR"])
     else:
       ret.gasPressed = cp.vl["PCM_CRUISE"]["GAS_RELEASED"] == 0  # TODO: these also have GAS_PEDAL, come back and unify
-      #ichiropilot
-      msg = "GAS_PEDAL_HYBRID" if (self.CP.flags & ToyotaFlags.HYBRID) else "GAS_PEDAL"
-      ret.gas = cp.vl[msg]["GAS_PEDAL"]
       can_gear = int(cp.vl["GEAR_PACKET"]["GEAR"])
       if not self.CP.enableDsu and not self.CP.flags & ToyotaFlags.DISABLE_RADAR.value:
         ret.stockAeb = bool(cp_acc.vl["PRE_COLLISION"]["PRECOLLISION_ACTIVE"] and cp_acc.vl["PRE_COLLISION"]["FORCE"] < -1e-5)
@@ -117,6 +114,8 @@ class CarState(CarStateBase):
         ret.gas = cp.vl["GAS_PEDAL_HYBRID"]["GAS_PEDAL"]
         ret.brake = -cp.vl["BRAKE"]["BRAKE_FORCE"]
         self.fdrv = cp.vl["GEAR_PACKET_HYBRID"]["FDRVREAL"]
+      else: #ichiropilot
+        ret.gas = cp.vl["GAS_PEDAL"]["GAS_PEDAL"]
 
     ret.wheelSpeeds = self.get_wheel_speeds(
       cp.vl["WHEEL_SPEEDS"]["WHEEL_SPEED_FL"],
@@ -333,15 +332,12 @@ class CarState(CarStateBase):
         pt_messages.append(("BRAKE", 83))
         pt_messages.append(("GAS_PEDAL_HYBRID", 33))
         pt_messages.append(("GEAR_PACKET_HYBRID", 33))
+      else: #ichiropilot
+        pt_messages.append(("GAS_PEDAL", 33))
 
       pt_messages += [
         ("GEAR_PACKET", 1),
       ]
-      #ichiropilot
-      if CP.flags & ToyotaFlags.HYBRID:
-        pt_messages.append(("GAS_PEDAL_HYBRID", 33))
-      else:
-        pt_messages.append(("GAS_PEDAL", 33))
 
     if CP.carFingerprint in UNSUPPORTED_DSU_CAR:
       pt_messages.append(("DSU_CRUISE", 5))
