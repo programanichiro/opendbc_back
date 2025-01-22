@@ -352,7 +352,7 @@ class CarController(CarControllerBase):
 
         actuators_accel = pcm_accel_cmd
 
-        comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
+        comp_thresh = np.interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
         # prohibit negative compensatory calculations when first activating long after accelerator depression or engagement
         if not CC.longActive:
           self.prohibit_neg_calculation = True
@@ -366,7 +366,7 @@ class CarController(CarControllerBase):
           accel_offset = 0.
         # only calculate pcm_accel_cmd when long is active to prevent disengagement from accelerator depression
         if CC.longActive:
-          pcm_accel_cmd = clip(actuators_accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
+          pcm_accel_cmd = clip(actuators_accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX) #np.clipを使うとエラー？
         else:
           pcm_accel_cmd = 0.
         try:
