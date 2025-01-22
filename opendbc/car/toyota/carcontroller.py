@@ -45,6 +45,9 @@ MAX_LTA_DRIVER_TORQUE_ALLOWANCE = 150  # slightly above steering pressed allows 
 COMPENSATORY_CALCULATION_THRESHOLD_V = [-0.2, -0.2, -0.05]  # m/s^2
 COMPENSATORY_CALCULATION_THRESHOLD_BP = [0., 20., 32.]  # m/s
 
+def my_clip(x, lo, hi):
+  return max(lo, min(hi, x))
+
 def get_long_tune(CP, params):
   kiBP = [5, 35]
   if CP.carFingerprint in TSS2_CAR:
@@ -395,7 +398,7 @@ class CarController(CarControllerBase):
           accel_offset = 0.
         # only calculate pcm_accel_cmd when long is active to prevent disengagement from accelerator depression
         if CC.longActive:
-          pcm_accel_cmd = np.clip(actuators_accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
+          pcm_accel_cmd = my_clip(actuators_accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX) #np.clipを使うとエラー？
         else:
           pcm_accel_cmd = 0.
         try:
