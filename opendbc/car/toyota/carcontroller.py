@@ -281,7 +281,7 @@ class CarController(CarControllerBase):
 
         # GVC does not overshoot ego acceleration when starting from stop, but still has a similar delay
         if not self.CP.flags & ToyotaFlags.SECOC.value:
-          a_ego_blended = np.interp(CS.out.vEgo, [1.0, 2.0], [CS.gvc, CS.out.aEgo])
+          a_ego_blended = interp(CS.out.vEgo, [1.0, 2.0], [CS.gvc, CS.out.aEgo])
         else:
           a_ego_blended = CS.out.aEgo
 
