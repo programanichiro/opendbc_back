@@ -352,7 +352,7 @@ class CarController(CarControllerBase):
 
         actuators_accel = pcm_accel_cmd
 
-        comp_thresh = np.interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
+        comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
         # prohibit negative compensatory calculations when first activating long after accelerator depression or engagement
         if not CC.longActive:
           self.prohibit_neg_calculation = True
