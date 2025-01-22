@@ -1,5 +1,6 @@
 import os
 import math
+import numpy as np
 from opendbc.car import Bus, carlog, apply_meas_steer_torque_limits, apply_std_steer_angle_limits, common_fault_avoidance, \
                         make_tester_present_msg, rate_limit, structs, ACCELERATION_DUE_TO_GRAVITY, DT_CTRL
 from opendbc.car.can_definitions import CanData
@@ -280,7 +281,7 @@ class CarController(CarControllerBase):
 
         # GVC does not overshoot ego acceleration when starting from stop, but still has a similar delay
         if not self.CP.flags & ToyotaFlags.SECOC.value:
-          a_ego_blended = interp(CS.out.vEgo, [1.0, 2.0], [CS.gvc, CS.out.aEgo])
+          a_ego_blended = np.interp(CS.out.vEgo, [1.0, 2.0], [CS.gvc, CS.out.aEgo])
         else:
           a_ego_blended = CS.out.aEgo
 
@@ -337,7 +338,7 @@ class CarController(CarControllerBase):
         pcm_accel_cmd = actuators.accel
         # GVC does not overshoot ego acceleration when starting from stop, but still has a similar delay
         if not self.CP.flags & ToyotaFlags.SECOC.value:
-          a_ego_blended = interp(CS.out.vEgo, [1.0, 2.0], [CS.gvc, CS.out.aEgo])
+          a_ego_blended = np.interp(CS.out.vEgo, [1.0, 2.0], [CS.gvc, CS.out.aEgo])
         else:
           a_ego_blended = CS.out.aEgo
           
@@ -351,7 +352,7 @@ class CarController(CarControllerBase):
 
         actuators_accel = pcm_accel_cmd
 
-        comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
+        comp_thresh = np.interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
         # prohibit negative compensatory calculations when first activating long after accelerator depression or engagement
         if not CC.longActive:
           self.prohibit_neg_calculation = True
@@ -435,7 +436,7 @@ class CarController(CarControllerBase):
     new_actuators = actuators.as_builder()
     new_actuators.steer = apply_steer / self.params.STEER_MAX
     new_actuators.steerOutputCan = apply_steer
-    new_actuators.steeringAngleDeg = self.last_angle
+    new_actuators.steeringAngleDeg = float(self.last_angle)
     new_actuators.accel = self.accel
 
     self.frame += 1
