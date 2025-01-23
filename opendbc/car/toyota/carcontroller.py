@@ -6,6 +6,7 @@ from opendbc.car import Bus, carlog, apply_meas_steer_torque_limits, apply_std_s
                         make_tester_present_msg, rate_limit, structs, ACCELERATION_DUE_TO_GRAVITY, DT_CTRL
 from opendbc.car.can_definitions import CanData
 from opendbc.car.common.filter_simple import FirstOrderFilter
+from opendbc.car.common.numpy_fast import clip, interp
 from opendbc.car.common.pid import PIDController
 from opendbc.car.secoc import add_mac, build_sync_mac
 from opendbc.car.interfaces import CarControllerBase
@@ -199,7 +200,7 @@ class CarController(CarControllerBase):
         if not lat_active:
           apply_angle = CS.out.steeringAngleDeg + CS.out.steeringAngleOffsetDeg
 
-        self.last_angle = float(np.clip(apply_angle, -MAX_LTA_ANGLE, MAX_LTA_ANGLE))
+        self.last_angle = clip(apply_angle, -MAX_LTA_ANGLE, MAX_LTA_ANGLE)
 
     self.last_steer = apply_steer
 
@@ -290,7 +291,7 @@ class CarController(CarControllerBase):
 
         # GVC does not overshoot ego acceleration when starting from stop, but still has a similar delay
         if not self.CP.flags & ToyotaFlags.SECOC.value:
-          a_ego_blended = np.interp(CS.out.vEgo, [1.0, 2.0], [CS.gvc, CS.out.aEgo])
+          a_ego_blended = interp(CS.out.vEgo, [1.0, 2.0], [CS.gvc, CS.out.aEgo])
         else:
           a_ego_blended = CS.out.aEgo
 
@@ -336,7 +337,7 @@ class CarController(CarControllerBase):
         elif net_acceleration_request_min > 0.3:
           self.permit_braking = False
 
-        pcm_accel_cmd = float(np.clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX))
+        pcm_accel_cmd = clip(pcm_accel_cmd, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
 
         try:
           with open('/dev/shm/cruise_info.txt','r') as fp:
@@ -367,7 +368,7 @@ class CarController(CarControllerBase):
         pcm_accel_cmd = actuators.accel
         # GVC does not overshoot ego acceleration when starting from stop, but still has a similar delay
         if not self.CP.flags & ToyotaFlags.SECOC.value:
-          a_ego_blended = np.interp(CS.out.vEgo, [1.0, 2.0], [CS.gvc, CS.out.aEgo])
+          a_ego_blended = interp(CS.out.vEgo, [1.0, 2.0], [CS.gvc, CS.out.aEgo])
         else:
           a_ego_blended = CS.out.aEgo
           
@@ -381,7 +382,7 @@ class CarController(CarControllerBase):
 
         actuators_accel = pcm_accel_cmd
 
-        comp_thresh = np.interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
+        comp_thresh = interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V)
         # prohibit negative compensatory calculations when first activating long after accelerator depression or engagement
         if not CC.longActive:
           self.prohibit_neg_calculation = True
@@ -395,7 +396,7 @@ class CarController(CarControllerBase):
           accel_offset = 0.
         # only calculate pcm_accel_cmd when long is active to prevent disengagement from accelerator depression
         if CC.longActive:
-          pcm_accel_cmd = np.clip(actuators_accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
+          pcm_accel_cmd = clip(actuators_accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
         else:
           pcm_accel_cmd = 0.
         try:
