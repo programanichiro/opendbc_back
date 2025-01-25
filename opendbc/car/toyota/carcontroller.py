@@ -78,9 +78,6 @@ class CarController(CarControllerBase):
     self.steer_rate_counter = 0
     self.prohibit_neg_calculation = True
     self.distance_button = 0
-    self.debug = 0
-    self.debug2 = 0
-    self.debug3 = 0
 
     self.brake_force_filter = FirstOrderFilter(0.0, 1, DT_CTRL * 3)
     self.fdrv_filter = FirstOrderFilter(0.0, 1, DT_CTRL * 3)
@@ -301,33 +298,16 @@ class CarController(CarControllerBase):
         j_ego = (self.aego.x - prev_aego) / (DT_CTRL * 3)
         a_ego_future = a_ego_blended + j_ego * 0.5
 
-        prev_brake = self.brake_force_filter.x
-        prev_fdrv = self.fdrv_filter.x
-        self.brake_force_filter.update(CS.out.brake)
-        self.fdrv_filter.update(CS.fdrv)
-        self.debug = (prev_brake - self.brake_force_filter.x) / self.CP.mass / .03
-        self.debug2 = self.brake_force_filter.x
-        self.debug3 = CS.out.brake
-
         if actuators.longControlState == LongCtrlState.pid:
           # constantly slowly unwind integral to recover from large temporary errors
           self.long_pid.i -= ACCEL_PID_UNWIND * float(np.sign(self.long_pid.i))
 
           error_future = pcm_accel_cmd - a_ego_future
-
-          # error_future = self.deque[-50 // 3] - CS.out.aEgo
-          print((prev_brake - self.brake_force_filter.x) / 0.03)
-          self.deque.append(pcm_accel_cmd)
-          fdrv_rate = (prev_fdrv - self.fdrv_filter.x) / self.CP.mass / .03
-
           pcm_accel_cmd = self.long_pid.update(error_future,
                                                speed=CS.out.vEgo,
-                                               feedforward=pcm_accel_cmd + self.debug / 2 + fdrv_rate / 2)
+                                               feedforward=pcm_accel_cmd)
         else:
           self.long_pid.reset()
-          self.deque = deque([0] * 50, maxlen=50)
-          self.brake_force_filter.x = 0
-          self.fdrv_filter.x = 0
 
         # Along with rate limiting positive jerk above, this greatly improves gas response time
         # Consider the net acceleration request that the PCM should be applying (pitch included)
@@ -468,9 +448,6 @@ class CarController(CarControllerBase):
     new_actuators.steerOutputCan = apply_steer
     new_actuators.steeringAngleDeg = self.last_angle
     new_actuators.accel = self.accel
-    new_actuators.debug = self.debug
-    new_actuators.debug2 = self.debug2
-    new_actuators.debug3 = self.debug3
 
     self.frame += 1
     return new_actuators, can_sends
