@@ -47,10 +47,9 @@ COMPENSATORY_CALCULATION_THRESHOLD_V = [-0.2, -0.2, -0.05]  # m/s^2
 COMPENSATORY_CALCULATION_THRESHOLD_BP = [0., 20., 32.]  # m/s
 
 def get_long_tune(CP, params):
-  kiBP = [5, 35]
   if CP.carFingerprint in TSS2_CAR:
-    kiV = [0.25, 0.25]
-
+    kiBP = [2., 5.]
+    kiV = [0.5, 0.25]
   else:
     if CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
       kiBP = [0., 5., 35.]
@@ -296,7 +295,9 @@ class CarController(CarControllerBase):
         prev_aego = self.aego.x
         self.aego.update(a_ego_blended)
         j_ego = (self.aego.x - prev_aego) / (DT_CTRL * 3)
-        a_ego_future = a_ego_blended + j_ego * 0.5
+
+        future_t = float(np.interp(CS.out.vEgo, [2., 5.], [0.25, 0.5]))
+        a_ego_future = a_ego_blended + j_ego * future_t
 
         if CC.longActive:
           # constantly slowly unwind integral to recover from large temporary errors
