@@ -112,8 +112,6 @@ class CarState(CarStateBase):
 
       if self.CP.flags & ToyotaFlags.HYBRID:
         ret.gas = cp.vl["GAS_PEDAL_HYBRID"]["GAS_PEDAL"]
-        ret.brake = -cp.vl["BRAKE"]["BRAKE_FORCE"]
-        self.fdrv = cp.vl["GEAR_PACKET_HYBRID"]["FDRVREAL"]
       else: #ichiropilot
         ret.gas = cp.vl["GAS_PEDAL"]["GAS_PEDAL"]
 
@@ -329,9 +327,7 @@ class CarState(CarStateBase):
         pt_messages.append(("ENGINE_RPM", 42))
 
       if CP.flags & ToyotaFlags.HYBRID:
-        pt_messages.append(("BRAKE", 83))
         pt_messages.append(("GAS_PEDAL_HYBRID", 33))
-        pt_messages.append(("GEAR_PACKET_HYBRID", 33))
       else: #ichiropilot
         pt_messages.append(("GAS_PEDAL", 33))
 
