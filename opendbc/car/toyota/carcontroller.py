@@ -63,7 +63,7 @@ class CarController(CarControllerBase):
   def __init__(self, dbc_names, CP):
     super().__init__(dbc_names, CP)
     self.params = CarControllerParams(self.CP)
-    self.last_steer = 0
+    self.last_torque = 0
     self.last_angle = 0
     self.alert_active = False
     self.last_standstill = False
@@ -165,7 +165,7 @@ class CarController(CarControllerBase):
           new_torque -= lane_d_info * 100 * 30 #引くとセンターへ車体を戻す。
     except Exception as e:
       pass
-    apply_torque = apply_meas_steer_torque_limits(new_torque, self.last_steer, CS.out.steeringTorqueEps, self.params)
+    apply_torque = apply_meas_steer_torque_limits(new_torque, self.last_torque, CS.out.steeringTorqueEps, self.params)
 
     # >100 degree/sec steering fault prevention
     self.steer_rate_counter, apply_steer_req = common_fault_avoidance(abs(CS.out.steeringRateDeg) >= MAX_STEER_RATE, lat_active,
@@ -188,7 +188,7 @@ class CarController(CarControllerBase):
                                                        CS.out.steeringAngleDeg + CS.out.steeringAngleOffsetDeg,
                                                        CC.latActive, self.params.ANGLE_LIMITS)
 
-    self.last_steer = apply_torque
+    self.last_torque = apply_torque
 
     # toyota can trace shows STEERING_LKA at 42Hz, with counter adding alternatively 1 and 2;
     # sending it at 100Hz seem to allow a higher rate limit, as the rate limit seems imposed
