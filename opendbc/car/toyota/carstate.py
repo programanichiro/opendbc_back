@@ -382,6 +382,12 @@ class CarState(CarStateBase):
           ("PRE_COLLISION", 33),
         ]
 
+    if CP.carFingerprint in UNSUPPORTED_DSU_CAR and CP.flags & ToyotaFlags.DSU_BYPASS.value:
+      cam_messages += [
+        ("DSU_CRUISE", 5),
+        ("PRE_COLLISION", 33),
+      ]
+
     return {
       Bus.pt: CANParser(DBC[CP.carFingerprint][Bus.pt], pt_messages, 0),
       Bus.cam: CANParser(DBC[CP.carFingerprint][Bus.pt], cam_messages, 2),
