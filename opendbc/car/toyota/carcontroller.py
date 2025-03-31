@@ -73,9 +73,6 @@ class CarController(CarControllerBase):
     self.prohibit_neg_calculation = True
     self.distance_button = 0
 
-    self.brake_force_filter = FirstOrderFilter(0.0, 1, DT_CTRL * 3)
-    self.fdrv_filter = FirstOrderFilter(0.0, 1, DT_CTRL * 3)
-
     # *** start long control state ***
     self.long_pid = get_long_tune(self.CP, self.params)
     self.aego = FirstOrderFilter(0.0, 0.25, DT_CTRL * 3)
