@@ -7,9 +7,11 @@ from opendbc.car.toyota.values import Ecu, CAR, DBC, ToyotaFlags, CarControllerP
                                                   ToyotaSafetyFlags
 from opendbc.car.disable_ecu import disable_ecu
 from opendbc.car.interfaces import CarInterfaceBase
+from openpilot.common.params import Params
 
 SteerControlType = structs.CarParams.SteerControlType
 
+# NowStandStill = False
 
 class CarInterface(CarInterfaceBase):
   CarState = CarState
@@ -48,6 +50,8 @@ class CarInterface(CarInterfaceBase):
       ret.steerLimitTimer = 0.4
 
     stop_and_go = candidate in TSS2_CAR
+    if candidate in TSS2_CAR:
+      ret.flags |= ToyotaFlags.POWER_STEERING_TSS2.value #パワステモーターTSS2
 
     # Detect smartDSU, which intercepts ACC_CMD from the DSU (or radar) allowing openpilot to send it
     # 0x2AA is sent by a similar device which intercepts the radar instead of DSU on NO_DSU_CARs
@@ -62,6 +66,9 @@ class CarInterface(CarInterfaceBase):
     if Ecu.hybrid in found_ecus:
       ret.flags |= ToyotaFlags.HYBRID.value
 
+    if Params().get_bool("AccelMethodSwitch") == True: # ichiropilot
+      ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value #TSSPでも使えるようになるのか？
+
     if candidate == CAR.TOYOTA_PRIUS:
       stop_and_go = True
       # Only give steer angle deadzone to for bad angle sensor prius
@@ -69,6 +76,9 @@ class CarInterface(CarInterfaceBase):
         if fw.ecu == "eps" and not fw.fwVersion == b'8965B47060\x00\x00\x00\x00\x00\x00':
           ret.steerActuatorDelay = 0.25
           CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning, steering_angle_deadzone_deg=0.2)
+        elif fw.ecu == "eps" and fw.fwVersion == b'8965B47060\x00\x00\x00\x00\x00\x00':
+          ret.flags |= ToyotaFlags.POWER_STEERING_TSS2.value #パワステモーター47700(8965B47060)はグッドアングルセンサー＆パワフルハンドリング、TSS2相当
+          ret.steerRatio = 13.4 #TSS2相当に。様子見。
 
     elif candidate in (CAR.LEXUS_RX, CAR.LEXUS_RX_TSS2):
       stop_and_go = True
@@ -129,9 +139,11 @@ class CarInterface(CarInterfaceBase):
         use_sdsu = use_sdsu and experimental_long
 
     # openpilot longitudinal enabled by default:
+    #  - non-(TSS2 radar ACC cars) w/ smartDSU installed
     #  - cars w/ DSU disconnected
     #  - TSS2 cars with camera sending ACC_CONTROL where we can block it
     # openpilot longitudinal behind experimental long toggle:
+    #  - TSS-P DSU-less cars w/ CAN filter installed (no radar parser yet)
     #  - TSS2 radar ACC cars (disables radar)
 
     if ret.flags & ToyotaFlags.SECOC.value:
@@ -150,8 +162,12 @@ class CarInterface(CarInterfaceBase):
     # to a negative value, so it won't matter.
     ret.minEnableSpeed = -1. if stop_and_go else MIN_ACC_SPEED
 
+    # on stock Toyota this is -2.5
+    ret.stopAccel = -2.5
+
+    ret.stoppingDecelRate = 0.3
     if candidate in TSS2_CAR:
-      ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value
+      # ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value #イチロウパイロットでは選択制にしたい
 
       ret.vEgoStopping = 0.25
       ret.vEgoStarting = 0.25
