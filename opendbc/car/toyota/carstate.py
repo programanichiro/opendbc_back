@@ -44,6 +44,17 @@ class CarState(CarStateBase):
     self.accurate_steer_angle_seen = False
     self.angle_offset = FirstOrderFilter(None, 60.0, DT_CTRL, initialized=False)
 
+    self.lkas_enabled = False
+    self.prev_lkas_enabled = False
+
+    self.brake_state = False
+    # self.params = Params()
+    # self.flag_eps_TSS2 = True if CP.flags & ToyotaFlags.POWER_STEERING_TSS2.value else False
+    self.before_ang = 0
+    self.prob_ang = 0
+    self.steeringAngleDegs = []
+    self.knight_scanner_bit3_ct = 0
+
     self.distance_button = 0
 
     self.pcm_follow_distance = 0
@@ -58,7 +69,22 @@ class CarState(CarStateBase):
     cp_cam = can_parsers[Bus.cam]
 
     ret = structs.CarState()
-    cp_acc = cp_cam if self.CP.carFingerprint in (TSS2_CAR - RADAR_ACC_CAR) else cp
+    if self.knight_scanner_bit3_ct == 0:
+      try:
+        with open('/dev/shm/knight_scanner_bit3.txt','r') as fp:
+          knight_scanner_bit3_str = fp.read()
+          if knight_scanner_bit3_str:
+            self.knight_scanner_bit3  = int(knight_scanner_bit3_str)
+      except Exception as e:
+        # self.knight_scanner_bit3  = 7 #ここでデフォ設定はしない、値を継続させるため。
+        # ⚫︎⚪︎⚪︎　空き,2024/7/31
+        # ⚪︎⚫︎⚪︎　new_steer平滑化,2024/1/14
+        # ⚪︎⚪︎⚫︎　ハンドル高精細化未来予想2024/1/19
+        pass
+    self.knight_scanner_bit3_ct = (self.knight_scanner_bit3_ct + 1) % 101
+    cp_acc = cp_cam if (self.CP.carFingerprint in (TSS2_CAR - RADAR_ACC_CAR) or bool(self.CP.flags & ToyotaFlags.DSU_BYPASS.value)) else cp
+
+    # self.brake_force = cp.vl['BRAKE']['BRAKE_FORCE']
 
     if not self.CP.flags & ToyotaFlags.SECOC.value:
       self.gvc = cp.vl["VSC1S07"]["GVC"]
