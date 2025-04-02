@@ -70,8 +70,8 @@ class CarInterface(CarInterfaceBase):
     if Ecu.hybrid in found_ecus:
       ret.flags |= ToyotaFlags.HYBRID.value
 
-    if Params().get_bool("AccelMethodSwitch") == True: # ichiropilot
-      ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value #TSSPでも使えるようになるのか？
+    # if Params().get_bool("AccelMethodSwitch") == True: # ichiropilot
+    #   ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value #TSSPでも使えるようになるのか？
 
     if candidate == CAR.TOYOTA_PRIUS:
       stop_and_go = True
