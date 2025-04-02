@@ -194,6 +194,12 @@ class CarState(CarStateBase):
       # the more accurate angle sensor signal is initialized
       ret.vehicleSensorsInvalid = not self.accurate_steer_angle_seen
 
+    new_brake_state = bool(cp.vl["ESP_CONTROL"]['BRAKE_LIGHTS_ACC'] or cp.vl["BRAKE_MODULE"]["BRAKE_PRESSED"] != 0)
+    if self.brake_state != new_brake_state:
+      self.brake_state = new_brake_state
+      with open('/dev/shm/brake_light_state.txt','w') as fp:
+        fp.write('%d' % (new_brake_state))
+
     if self.CP.carFingerprint in UNSUPPORTED_DSU_CAR:
       # TODO: find the bit likely in DSU_CRUISE that describes an ACC fault. one may also exist in CLUTCH
       ret.cruiseState.available = cp.vl["DSU_CRUISE"]["MAIN_ON"] != 0
@@ -211,8 +217,9 @@ class CarState(CarStateBase):
       conversion_factor = CV.KPH_TO_MS if is_metric else CV.MPH_TO_MS
       ret.cruiseState.speedCluster = cluster_set_speed * conversion_factor
 
-    if self.CP.carFingerprint in TSS2_CAR and not self.CP.flags & ToyotaFlags.DISABLE_RADAR.value:
-      self.acc_type = cp_acc.vl["ACC_CONTROL"]["ACC_TYPE"]
+    if bool(self.CP.flags & ToyotaFlags.DSU_BYPASS.value) or (self.CP.carFingerprint in TSS2_CAR and not self.CP.flags & ToyotaFlags.DISABLE_RADAR.value):
+      if not (self.CP.flags & ToyotaFlags.SMART_DSU.value) and not bool(self.CP.flags & ToyotaFlags.DSU_BYPASS.value):
+        self.acc_type = cp_acc.vl["ACC_CONTROL"]["ACC_TYPE"]
       ret.stockFcw = bool(cp_acc.vl["PCS_HUD"]["FCW"])
 
     # some TSS2 cars have low speed lockout permanently set, so ignore on those cars
@@ -230,6 +237,7 @@ class CarState(CarStateBase):
       ret.cruiseState.standstill = self.pcm_acc_status == 7
     ret.cruiseState.enabled = bool(cp.vl["PCM_CRUISE"]["CRUISE_ACTIVE"])
     ret.cruiseState.nonAdaptive = self.pcm_acc_status in (1, 2, 3, 4, 5, 6)
+    self.pcm_neutral_force = cp.vl["PCM_CRUISE"]["NEUTRAL_FORCE"]
 
     ret.genericToggle = bool(cp.vl["LIGHT_STALK"]["AUTO_HIGH_BEAM"])
     ret.espDisabled = cp.vl["ESP_CONTROL"]["TC_DISABLED"] != 0
@@ -240,11 +248,46 @@ class CarState(CarStateBase):
 
     if self.CP.carFingerprint != CAR.TOYOTA_PRIUS_V:
       self.lkas_hud = copy.copy(cp_cam.vl["LKAS_HUD"])
+      self.lkas_enabled = cp_cam.vl["LKAS_HUD"]["LKAS_STATUS"]
+      if self.prev_lkas_enabled is None:
+        self.prev_lkas_enabled = self.lkas_enabled
+      steer_always = 0
+      try:
+        with open('/dev/shm/steer_always.txt','r') as fp:
+          steer_always_str = fp.read()
+          if steer_always_str:
+            if int(steer_always_str) >= 1:
+              steer_always = 2
+      except Exception as e:
+        pass
+      # with open('/tmp/debug_out_v','w') as fp:
+      #   fp.write("lkas_enabled:%d,%d,<%d,%d>" % (self.lkas_enabled,self.prev_lkas_enabled,steer_always,ret.cruiseState.available))
+      with open('/dev/shm/cruise_available.txt','w') as fp:
+        fp.write('%d' % (ret.cruiseState.available and ret.gearShifter != structs.CarState.GearShifter.reverse)) #念の為バック時にはfalse
+      if not self.prev_lkas_enabled and self.lkas_enabled and steer_always == 0:# and ret.cruiseState.available:
+        with open('/dev/shm/steer_always.txt','w') as fp:
+         fp.write('%d' % 1)
+        # with open('/data/steer_always.txt','w') as fp:
+        #  fp.write('%d' % 1)
+      elif (self.prev_lkas_enabled and not self.lkas_enabled and steer_always != 0):# or not ret.cruiseState.available:
+        with open('/dev/shm/steer_always.txt','w') as fp:
+         fp.write('%d' % 0)
+        # with open('/data/steer_always.txt','w') as fp:
+        #  fp.write('%d' % 0)
+      self.prev_lkas_enabled = self.lkas_enabled
+
+    # if self.pcm_follow_distance != cp.vl["PCM_CRUISE_2"]['PCM_FOLLOW_DISTANCE']:
+    #   if self.pcm_follow_distance != 0 and cp.vl["PCM_CRUISE_2"]['PCM_FOLLOW_DISTANCE'] != 0:
+    #     #ボタン切り替え
+    #     lines = cp.vl["PCM_CRUISE_2"]['PCM_FOLLOW_DISTANCE']
+    #     #button(1,2,3) -> LongitudinalPersonality(2,1,0) #大小逆になる
+    #     self.params.put("LongitudinalPersonality", str(3-int(lines))) #公式距離ボタン対応で不要に。
 
     if self.CP.carFingerprint not in UNSUPPORTED_DSU_CAR:
-      self.pcm_follow_distance = cp.vl["PCM_CRUISE_2"]["PCM_FOLLOW_DISTANCE"]
+      self.pcm_follow_distance = cp.vl["PCM_CRUISE_2"]["PCM_FOLLOW_DISTANCE"] #DISTANCE_LINESと逆1,2,3（遠い、中間、近い）
+      # self.pcm_follow_distance = cp.vl["PCM_CRUISE_SM"]["DISTANCE_LINES"] #3,2,1
 
-    if self.CP.carFingerprint in (TSS2_CAR - RADAR_ACC_CAR) or (self.CP.flags & ToyotaFlags.SMART_DSU):
+    if self.CP.carFingerprint in (TSS2_CAR - RADAR_ACC_CAR) or (self.CP.flags & ToyotaFlags.SMART_DSU) or (self.CP.flags & ToyotaFlags.DSU_BYPASS):
       # distance button is wired to the ACC module (camera or radar)
       prev_distance_button = self.distance_button
       if not self.CP.flags & ToyotaFlags.SMART_DSU:
