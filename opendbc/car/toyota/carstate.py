@@ -133,8 +133,10 @@ class CarState(CarStateBase):
 
     # On some cars, the angle measurement is non-zero while initializing
     if abs(torque_sensor_angle_deg) > 1e-3 and not bool(cp.vl["STEER_TORQUE_SENSOR"]["STEER_ANGLE_INITIALIZING"]):
-      self.accurate_steer_angle_seen = True
+      # self.accurate_steer_angle_seen = (not self.flag_eps_TSS2) if (self.knight_scanner_bit3 & 0x04) else True #True , 自分だけFalseにする, ただし knight_scanner_bit3.txt ⚪︎⚪︎⚫︎を切ると常にTrue
+      self.accurate_steer_angle_seen = True #あれば常にグッドアングルセンサーを使う
 
+    # steeringAngleDeg_ = ret.steeringAngleDeg
     if self.accurate_steer_angle_seen:
       # Offset seems to be invalid for large steering angles and high angle rates
       if abs(ret.steeringAngleDeg) < 90 and abs(ret.steeringRateDeg) < 100 and cp.can_valid:
@@ -144,6 +146,33 @@ class CarState(CarStateBase):
         ret.steeringAngleOffsetDeg = self.angle_offset.x
         ret.steeringAngleDeg = torque_sensor_angle_deg - self.angle_offset.x
 
+    self.steeringAngleDegOrg = ret.steeringAngleDeg #回転先予想する前のオリジナル値
+    if (self.knight_scanner_bit3_ct & 0x3) == 1:
+      with open('/dev/shm/steer_ang_info.txt','w') as fp:
+       fp.write('%f' % (self.steeringAngleDegOrg))
+    # if self.CP.carFingerprint not in TSS2_CAR:
+    if (self.knight_scanner_bit3 & 0x04) and abs(self.steeringAngleDegOrg) < 35: # knight_scanner_bit3.txt ⚪︎⚪︎⚫︎をONで有効, 35度以上急カーブは補正止める
+      steeringAngleDeg0 = ret.steeringAngleDeg
+      self.steeringAngleDegs.append(float(steeringAngleDeg0))
+      if len(self.steeringAngleDegs) > 13:
+        self.steeringAngleDegs.pop(0)
+        # 過去13フレーム(0.13秒)の角度から、角速度と角加速度の平均を求める。
+        angVs = [self.steeringAngleDegs[i + 1] - self.steeringAngleDegs[i] for i in range(len(self.steeringAngleDegs) - 1)] #過去９回の角速度
+        angAs = [angVs[i + 1] - angVs[i] for i in range(len(angVs) - 1)]
+        angV = sum(angVs) / len(angVs)
+        angA = sum(angAs) / len(angAs)
+        self.prob_ang += angV
+        prob_ct = 10 # 0.1秒先の未来を推定。
+        prob_ang2 = prob_ct * angV + (prob_ct-1) * prob_ct / 2 * angA
+        if self.before_ang != ret.steeringAngleDeg or self.accurate_steer_angle_seen:
+          self.prob_ang = 0
+        self.before_ang = ret.steeringAngleDeg
+        # with open('/tmp/debug_out_v','w') as fp:
+        #   fp.write("%+.2f(%+.2f),%+.2f/%+.2f" % (ret.steeringAngleDeg+self.prob_ang+prob_ang2,self.prob_ang+prob_ang2,angV,angA))
+        ret.steeringAngleDeg += self.prob_ang + prob_ang2 #未来推定と現時点高精細処理を同時に行う。
+
+    # with open('/tmp/debug_out_o','w') as fp:
+    #   fp.write("%+.3f/%+.4f" % (steeringAngleDeg_ , ret.steeringAngleDeg))
     ret.gearShifter = self.parse_gear_shifter(self.shifter_values.get(can_gear, None))
     ret.leftBlinker = cp.vl["BLINKERS_STATE"]["TURN_SIGNALS"] == 1
     ret.rightBlinker = cp.vl["BLINKERS_STATE"]["TURN_SIGNALS"] == 2
