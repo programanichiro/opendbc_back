@@ -152,12 +152,6 @@ class CarState(CarStateBase):
       # the more accurate angle sensor signal is initialized
       ret.vehicleSensorsInvalid = not self.accurate_steer_angle_seen
 
-    new_brake_state = bool(cp.vl["ESP_CONTROL"]['BRAKE_LIGHTS_ACC'] or cp.vl["BRAKE_MODULE"]["BRAKE_PRESSED"] != 0)
-    if self.brake_state != new_brake_state:
-      self.brake_state = new_brake_state
-      with open('/dev/shm/brake_light_state.txt','w') as fp:
-        fp.write('%d' % (new_brake_state))
-
     if self.CP.carFingerprint in UNSUPPORTED_DSU_CAR:
       # TODO: find the bit likely in DSU_CRUISE that describes an ACC fault. one may also exist in CLUTCH
       ret.cruiseState.available = cp.vl["DSU_CRUISE"]["MAIN_ON"] != 0
