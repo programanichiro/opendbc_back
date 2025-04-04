@@ -239,6 +239,11 @@ class CarState(CarStateBase):
       if CP.carFingerprint not in [CAR.TOYOTA_MIRAI]:
         pt_messages.append(("ENGINE_RPM", 42))
 
+      if CP.flags & ToyotaFlags.HYBRID:
+        pt_messages.append(("GAS_PEDAL_HYBRID", 33))
+      else: #ichiropilot
+        pt_messages.append(("GAS_PEDAL", 33))
+
       pt_messages += [
         ("GEAR_PACKET", 1),
       ]
