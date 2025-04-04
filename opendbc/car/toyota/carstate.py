@@ -95,6 +95,11 @@ class CarState(CarStateBase):
       if self.CP.carFingerprint != CAR.TOYOTA_MIRAI:
         ret.engineRpm = cp.vl["ENGINE_RPM"]["RPM"]
 
+      if self.CP.flags & ToyotaFlags.HYBRID:
+        ret.gas = cp.vl["GAS_PEDAL_HYBRID"]["GAS_PEDAL"]
+      else: #ichiropilot
+        ret.gas = cp.vl["GAS_PEDAL"]["GAS_PEDAL"]
+
     ret.wheelSpeeds = self.get_wheel_speeds(
       cp.vl["WHEEL_SPEEDS"]["WHEEL_SPEED_FL"],
       cp.vl["WHEEL_SPEEDS"]["WHEEL_SPEED_FR"],
