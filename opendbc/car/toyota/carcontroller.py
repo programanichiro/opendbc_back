@@ -370,6 +370,13 @@ class CarController(CarControllerBase):
           pcm_accel_cmd = clip(actuators_accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX)
         else:
           pcm_accel_cmd = 0.
+
+        net_acceleration_request_min = min(actuators.accel + accel_due_to_pitch, net_acceleration_request)
+        if net_acceleration_request_min < 0.2 or stopping or not CC.longActive:
+          self.permit_braking = True
+        elif net_acceleration_request_min > 0.3:
+          self.permit_braking = False
+
         try:
           with open('/dev/shm/cruise_info.txt','r') as fp:
             cruise_info_str = fp.read()
@@ -389,7 +396,7 @@ class CarController(CarControllerBase):
                       actuators_accel = 0
         except Exception as e:
           pass
-        can_sends.append(toyotacan.create_accel_command_cydia(self.packer, pcm_accel_cmd, actuators_accel, CS.out.aEgo, CC.longActive, pcm_cancel_cmd, self.standstill_req,
+        can_sends.append(toyotacan.create_accel_command_cydia(self.packer, pcm_accel_cmd, actuators_accel, CS.out.aEgo, CC.longActive, pcm_cancel_cmd, self.permit_braking, self.standstill_req,
                                                         lead, CS.acc_type, fcw_alert, self.distance_button))
         self.accel = pcm_accel_cmd
 
@@ -401,7 +408,7 @@ class CarController(CarControllerBase):
         elif self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
           can_sends.append(toyotacan.create_accel_command(self.packer, 0, pcm_cancel_cmd, True, False, lead, CS.acc_type, False, self.distance_button))
         else:
-          can_sends.append(toyotacan.create_accel_command_cydia(self.packer, 0, 0, 0, False, pcm_cancel_cmd, False, lead, CS.acc_type, False, self.distance_button))
+          can_sends.append(toyotacan.create_accel_command_cydia(self.packer, 0, 0, 0, False, pcm_cancel_cmd, True, False, lead, CS.acc_type, False, self.distance_button))
 
     # *** hud ui ***
     if self.CP.carFingerprint != CAR.TOYOTA_PRIUS_V:

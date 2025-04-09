@@ -56,14 +56,14 @@ def create_accel_command(packer, accel, pcm_cancel, permit_braking, standstill_r
   return packer.make_can_msg("ACC_CONTROL", 0, values)
 
 
-def create_accel_command_cydia(packer, accel, accel_raw, aego, enabled, pcm_cancel, standstill_req, lead, acc_type, fcw_alert, distance):
+def create_accel_command_cydia(packer, accel, accel_raw, aego, enabled, pcm_cancel, permit_braking, standstill_req, lead, acc_type, fcw_alert, distance):
   # TODO: find the exact canceling bit that does not create a chime
   values = {
     "ACCEL_CMD": accel if enabled and not pcm_cancel else 0.,  # compensated accel command
     "ACC_TYPE": acc_type,
     "DISTANCE": distance,
     "MINI_CAR": lead,
-    "PERMIT_BRAKING": not enabled,
+    "PERMIT_BRAKING": permit_braking,
     "RELEASE_STANDSTILL": not standstill_req,
     "CANCEL_REQ": pcm_cancel,
     "ALLOW_LONG_PRESS": 1,
