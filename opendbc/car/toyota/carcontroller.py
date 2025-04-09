@@ -280,12 +280,12 @@ class CarController(CarControllerBase):
           a_ego_blended = CS.out.aEgo
 
         # wind down integral when approaching target for step changes and smooth ramps to reduce overshoot
-        #prev_aego = self.aego.x
+        prev_aego = self.aego.x
         self.aego.update(a_ego_blended)
-        j_ego = self.aego.x #(self.aego.x - prev_aego) / (DT_CTRL * 3)
+        j_ego = (self.aego.x - prev_aego) / (DT_CTRL * 3)
 
-        #future_t = float(interp(CS.out.vEgo, [2., 5.], [0.25, 0.5]))
-        a_ego_future = a_ego_blended + j_ego # * future_t
+        future_t = float(interp(CS.out.vEgo, [2., 5.], [0.25, 0.5]))
+        a_ego_future = a_ego_blended + j_ego * future_t
 
         if CC.longActive:
           # constantly slowly unwind integral to recover from large temporary errors
