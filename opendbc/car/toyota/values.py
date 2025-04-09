@@ -36,11 +36,7 @@ class CarControllerParams:
 
   def __init__(self, CP):
     if CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
-      if CP.carFingerprint in TSS2_CAR:
-        self.ACCEL_MAX = 2.0
-      else:
-        #TSSP
-        self.ACCEL_MAX = 1.5
+      self.ACCEL_MAX = 2.0
     else:
       self.ACCEL_MAX = 2.0  #1.5では発進が鈍る？ # m/s2, lower than allowed 2.0 m/s^2 for tuning reasons
     self.ACCEL_MIN = -3.5  # m/s2
