@@ -371,12 +371,6 @@ class CarController(CarControllerBase):
         else:
           pcm_accel_cmd = 0.
 
-        net_acceleration_request_min = min(actuators.accel + accel_due_to_pitch, net_acceleration_request)
-        if net_acceleration_request_min < 0.2 or stopping or not CC.longActive:
-          self.permit_braking = True
-        elif net_acceleration_request_min > 0.3:
-          self.permit_braking = False
-
         try:
           with open('/dev/shm/cruise_info.txt','r') as fp:
             cruise_info_str = fp.read()
@@ -396,6 +390,19 @@ class CarController(CarControllerBase):
                       actuators_accel = 0
         except Exception as e:
           pass
+
+        # calculate amount of acceleration PCM should apply to reach target, given pitch.
+        # clipped to only include downhill angles, avoids erroneously unsetting PERMIT_BRAKING when stopping on uphills
+        accel_due_to_pitch = math.sin(min(self.pitch.x, 0.0)) * ACCELERATION_DUE_TO_GRAVITY
+        # TODO: on uphills this sometimes sets PERMIT_BRAKING low not considering the creep force
+        net_acceleration_request = pcm_accel_cmd + accel_due_to_pitch
+        
+        net_acceleration_request_min = min(actuators_accel + accel_due_to_pitch, net_acceleration_request)
+        if net_acceleration_request_min < 0.2 or stopping or not CC.longActive:
+          self.permit_braking = True
+        elif net_acceleration_request_min > 0.3:
+          self.permit_braking = False
+
         can_sends.append(toyotacan.create_accel_command_cydia(self.packer, pcm_accel_cmd, actuators_accel, CS.out.aEgo, CC.longActive, pcm_cancel_cmd, self.permit_braking, self.standstill_req,
                                                         lead, CS.acc_type, fcw_alert, self.distance_button))
         self.accel = pcm_accel_cmd
