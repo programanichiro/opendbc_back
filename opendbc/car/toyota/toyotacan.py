@@ -63,7 +63,7 @@ def create_accel_command_cydia(packer, accel, accel_raw, aego, enabled, pcm_canc
     "ACC_TYPE": acc_type,
     "DISTANCE": distance,
     "MINI_CAR": lead,
-    "PERMIT_BRAKING": permit_braking,
+    "PERMIT_BRAKING": permit_braking, #ブレーキを許可するってだけの意味？、もしかしてずっと1でも問題ないのかも。
     "RELEASE_STANDSTILL": not standstill_req,
     "CANCEL_REQ": pcm_cancel,
     "ALLOW_LONG_PRESS": 1,
