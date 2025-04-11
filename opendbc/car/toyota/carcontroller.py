@@ -46,13 +46,8 @@ def get_long_tune(CP, params):
     kiBP = [2., 5.]
     kiV = [0.5, 0.25]
   else:
-    if CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
-      kiBP = [0., 5., 35.]
-      kiV = [3.6, 2.4, 1.5]
-    else:
-      # cydia method
-      kiBP = [0.]
-      kiV = [1.2]
+    kiBP = [0., 5., 35.]
+    kiV = [3.6, 2.4, 1.5]
 
   return PIDController(0.0, (kiBP, kiV), k_f=1.0,
                        pos_limit=params.ACCEL_MAX, neg_limit=params.ACCEL_MIN,
