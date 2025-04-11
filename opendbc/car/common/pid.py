@@ -28,17 +28,14 @@ class PIDController:
 
   @property
   def k_p(self):
-    np.interp(self.speed, self._k_p[0], self._k_p[1])
     return interp(self.speed, self._k_p[0], self._k_p[1])
 
   @property
   def k_i(self):
-    np.interp(self.speed, self._k_i[0], self._k_i[1])
     return interp(self.speed, self._k_i[0], self._k_i[1])
 
   @property
   def k_d(self):
-    np.interp(self.speed, self._k_d[0], self._k_d[1])
     return interp(self.speed, self._k_d[0], self._k_d[1])
 
   @property
@@ -67,13 +64,10 @@ class PIDController:
 
         # Clip i to prevent exceeding control limits
         control_no_i = self.p + self.d + self.f
-        control_no_i_np = np.clip(control_no_i, self.neg_limit, self.pos_limit)
         control_no_i = clip(control_no_i, self.neg_limit, self.pos_limit)
-        self_i_np = np.clip(self.i, self.neg_limit - control_no_i, self.pos_limit - control_no_i)
         self.i = clip(self.i, self.neg_limit - control_no_i, self.pos_limit - control_no_i)
 
     control = self.p + self.i + self.d + self.f
 
-    self_control_np = np.clip(control, self.neg_limit, self.pos_limit)
     self.control = clip(control, self.neg_limit, self.pos_limit)
     return self.control
