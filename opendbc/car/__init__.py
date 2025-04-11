@@ -109,19 +109,19 @@ def apply_driver_steer_torque_limits(apply_torque: int, apply_torque_last: int, 
   driver_min_torque = -steer_max + (-LIMITS.STEER_DRIVER_ALLOWANCE + driver_torque * LIMITS.STEER_DRIVER_FACTOR) * LIMITS.STEER_DRIVER_MULTIPLIER
   max_steer_allowed = max(min(steer_max, driver_max_torque), 0)
   min_steer_allowed = min(max(-steer_max, driver_min_torque), 0)
-  apply_torque_np = np.clip(apply_torque, min_steer_allowed, max_steer_allowed)
-  apply_torque = clip(apply_torque, min_steer_allowed, max_steer_allowed)
+  apply_torque = np.clip(apply_torque, min_steer_allowed, max_steer_allowed)
+  apply_torque_xx = clip(apply_torque, min_steer_allowed, max_steer_allowed)
 
   # slow rate if steer torque increases in magnitude
   if apply_torque_last > 0:
-    apply_torque_np = np.clip(apply_torque, max(apply_torque_last - LIMITS.STEER_DELTA_DOWN, -LIMITS.STEER_DELTA_UP),
+    apply_torque = np.clip(apply_torque, max(apply_torque_last - LIMITS.STEER_DELTA_DOWN, -LIMITS.STEER_DELTA_UP),
                         apply_torque_last + LIMITS.STEER_DELTA_UP)
-    apply_torque = clip(apply_torque, max(apply_torque_last - LIMITS.STEER_DELTA_DOWN, -LIMITS.STEER_DELTA_UP),
+    apply_torque_xx = clip(apply_torque, max(apply_torque_last - LIMITS.STEER_DELTA_DOWN, -LIMITS.STEER_DELTA_UP),
                         apply_torque_last + LIMITS.STEER_DELTA_UP)
   else:
-    apply_torque_np = np.clip(apply_torque, apply_torque_last - LIMITS.STEER_DELTA_UP,
+    apply_torque = np.clip(apply_torque, apply_torque_last - LIMITS.STEER_DELTA_UP,
                         min(apply_torque_last + LIMITS.STEER_DELTA_DOWN, LIMITS.STEER_DELTA_UP))
-    apply_torque = clip(apply_torque, apply_torque_last - LIMITS.STEER_DELTA_UP,
+    apply_torque_xx = clip(apply_torque, apply_torque_last - LIMITS.STEER_DELTA_UP,
                         min(apply_torque_last + LIMITS.STEER_DELTA_DOWN, LIMITS.STEER_DELTA_UP))
 
   return int(round(float(apply_torque)))
@@ -134,22 +134,22 @@ def apply_dist_to_meas_limits(val, val_last, val_meas,
   max_lim = min(max(val_meas + STEER_ERROR_MAX, STEER_ERROR_MAX), STEER_MAX)
   min_lim = max(min(val_meas - STEER_ERROR_MAX, -STEER_ERROR_MAX), -STEER_MAX)
 
-  val_np = np.clip(val, min_lim, max_lim)
-  val = clip(val, min_lim, max_lim)
+  val = np.clip(val, min_lim, max_lim)
+  val_xx = clip(val, min_lim, max_lim)
 
   # slow rate if val increases in magnitude
   if val_last > 0:
-    val_np = np.clip(val,
+    val = np.clip(val,
                max(val_last - STEER_DELTA_DOWN, -STEER_DELTA_UP),
                val_last + STEER_DELTA_UP)
-    val = clip(val,
+    val_xx = clip(val,
                max(val_last - STEER_DELTA_DOWN, -STEER_DELTA_UP),
                val_last + STEER_DELTA_UP)
   else:
-    val_np = np.clip(val,
+    val = np.clip(val,
                val_last - STEER_DELTA_UP,
                min(val_last + STEER_DELTA_DOWN, STEER_DELTA_UP))
-    val = clip(val,
+    val_xx = clip(val,
                val_last - STEER_DELTA_UP,
                min(val_last + STEER_DELTA_DOWN, STEER_DELTA_UP))
 
@@ -168,17 +168,17 @@ def apply_std_steer_angle_limits(apply_angle: float, apply_angle_last: float, v_
   steer_up = apply_angle_last * apply_angle >= 0. and abs(apply_angle) > abs(apply_angle_last)
   rate_limits = limits.ANGLE_RATE_LIMIT_UP if steer_up else limits.ANGLE_RATE_LIMIT_DOWN
 
-  angle_rate_lim_np = np.interp(v_ego, rate_limits[0], rate_limits[1])
-  new_apply_angle_np = np.clip(apply_angle, apply_angle_last - angle_rate_lim, apply_angle_last + angle_rate_lim)
-  angle_rate_lim = interp(v_ego, rate_limits[0], rate_limits[1])
-  new_apply_angle = clip(apply_angle, apply_angle_last - angle_rate_lim, apply_angle_last + angle_rate_lim)
+  angle_rate_lim = np.interp(v_ego, rate_limits[0], rate_limits[1])
+  new_apply_angle = np.clip(apply_angle, apply_angle_last - angle_rate_lim, apply_angle_last + angle_rate_lim)
+  angle_rate_lim_xx = interp(v_ego, rate_limits[0], rate_limits[1])
+  new_apply_angle_xx = clip(apply_angle, apply_angle_last - angle_rate_lim, apply_angle_last + angle_rate_lim)
 
   # angle is current steering wheel angle when inactive on all angle cars
   if not lat_active:
     new_apply_angle = steering_angle
 
-  float(np.clip(new_apply_angle, -limits.STEER_ANGLE_MAX, limits.STEER_ANGLE_MAX))
-  return float(clip(new_apply_angle, -limits.STEER_ANGLE_MAX, limits.STEER_ANGLE_MAX))
+  return float(np.clip(new_apply_angle, -limits.STEER_ANGLE_MAX, limits.STEER_ANGLE_MAX))
+  #_xx return float(clip(new_apply_angle, -limits.STEER_ANGLE_MAX, limits.STEER_ANGLE_MAX))
 
 
 def common_fault_avoidance(fault_condition: bool, request: bool, above_limit_frames: int,
@@ -218,12 +218,12 @@ def rate_limit(new_value, last_value, dw_step, up_step):
 
 def get_friction(lateral_accel_error: float, lateral_accel_deadzone: float, friction_threshold: float,
                  torque_params: structs.CarParams.LateralTorqueTuning, friction_compensation: bool) -> float:
-  friction_interp_np = np.interp(
+  friction_interp = np.interp(
     apply_center_deadzone(lateral_accel_error, lateral_accel_deadzone),
     [-friction_threshold, friction_threshold],
     [-torque_params.friction, torque_params.friction]
   )
-  friction_interp = interp(
+  friction_interp_xx = interp(
     apply_center_deadzone(lateral_accel_error, lateral_accel_deadzone),
     [-friction_threshold, friction_threshold],
     [-torque_params.friction, torque_params.friction]
