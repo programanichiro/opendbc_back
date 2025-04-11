@@ -64,10 +64,13 @@ class PIDController:
 
         # Clip i to prevent exceeding control limits
         control_no_i = self.p + self.d + self.f
-        control_no_i = np.clip(control_no_i, self.neg_limit, self.pos_limit)
-        self.i = np.clip(self.i, self.neg_limit - control_no_i, self.pos_limit - control_no_i)
+        control_no_i_np = np.clip(control_no_i, self.neg_limit, self.pos_limit)
+        control_no_i = clip(control_no_i, self.neg_limit, self.pos_limit)
+        self_i_np = np.clip(self.i, self.neg_limit - control_no_i, self.pos_limit - control_no_i)
+        self.i = clip(self.i, self.neg_limit - control_no_i, self.pos_limit - control_no_i)
 
     control = self.p + self.i + self.d + self.f
 
-    self.control = np.clip(control, self.neg_limit, self.pos_limit)
+    self_control_np = np.clip(control, self.neg_limit, self.pos_limit)
+    self.control = clip(control, self.neg_limit, self.pos_limit)
     return self.control
