@@ -11,7 +11,8 @@ def clip(x, lo, hi):
     with open('/tmp/debug_trace.txt', 'a') as f:
         f.write(f"np.clip result: {np_}, a={a}\n")
 
-    return a
+    return np_
+    # return a
 
 def interp(x, xp, fp):
   np_ = np.interp(x, xp, fp)
