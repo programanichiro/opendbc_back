@@ -196,7 +196,7 @@ def apply_center_deadzone(error, deadzone):
 
 
 def rate_limit(new_value, last_value, dw_step, up_step):
-  return np.clip(new_value, last_value + dw_step, last_value + up_step)
+  return float(np.clip(new_value, last_value + dw_step, last_value + up_step))
 
 
 def get_friction(lateral_accel_error: float, lateral_accel_deadzone: float, friction_threshold: float,
