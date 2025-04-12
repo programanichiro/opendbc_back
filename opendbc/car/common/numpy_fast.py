@@ -1,18 +1,23 @@
+import os
 import numpy as np
 from numbers import Number
 
 def clip(x, lo, hi):
     with open('/tmp/debug_trace.txt', 'a') as f:
         f.write(f"clip called: x={x}, lo={lo}, hi={hi}\n")
+        f.flush()
+        os.fsync(f.fileno())  # 明示的に書き込みをディスク
 
     a = max(lo, min(hi, x))
     np_ = np.clip(x, lo, hi)
 
     with open('/tmp/debug_trace.txt', 'a') as f:
         f.write(f"np.clip result: {np_}, a={a}\n")
+        f.flush()
+        os.fsync(f.fileno())  # 明示的に書き込みをディスク
 
-    return np_
     # return a
+    return np_
 
 def interp(x, xp, fp):
   np_ = np.interp(x, xp, fp)
