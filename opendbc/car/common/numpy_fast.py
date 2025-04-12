@@ -1,10 +1,10 @@
 import numpy as np
+from numbers import Number
 
 def clip(x, lo, hi):
   np_ = np.clip(x, lo, hi)
   a = max(lo, min(hi, x))
-  return a
-  if a != np_:
+  if not isinstance(np_, Number) or a != np_:
     with open('/tmp/debug_out_o','w') as fp:
       fp.write("clip:%f, %f,%f,%f" % (a , x,lo,hi))
     return a
@@ -26,8 +26,7 @@ def interp(x, xp, fp):
       (xv - xp[low]) * (fp[hi] - fp[low]) / (xp[hi] - xp[low]) + fp[low])
 
   a = [get_interp(v) for v in x] if hasattr(x, '__iter__') else get_interp(x)
-  return a
-  if a != np_:
+  if not isinstance(np_, Number) or a != np_:
     with open('/tmp/debug_out_v','w') as fp:
       fp.write("interp:%f" % (a))
     return a
