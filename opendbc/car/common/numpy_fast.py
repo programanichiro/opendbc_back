@@ -2,20 +2,16 @@ import numpy as np
 from numbers import Number
 
 def clip(x, lo, hi):
+    with open('debug_trace.txt', 'a') as f:
+        f.write(f"/tmp/clip called: x={x}, lo={lo}, hi={hi}\n")
+
     a = max(lo, min(hi, x))
     np_ = np.clip(x, lo, hi)
-    if not isinstance(x, Number) or not isinstance(lo, Number) or not isinstance(hi, Number):
-        with open('/tmp/debug_out_o', 'w') as fp:
-            fp.write(f"clip: 引数の型が不正です: x={x}, lo={lo}, hi={hi}, np_={np_}, type(np_)={type(np_)}\n")
-        return a  # または None など適切な値を返す
 
-    if np_ is None or not isinstance(np_, Number) or a != np_:
-        with open('/tmp/debug_out_o2', 'w') as fp:
-            fp.write("clip:%f\n" % a)
-        return a
-    else:
-        return np_
+    with open('/tmp/debug_trace.txt', 'a') as f:
+        f.write(f"np.clip result: {np_}, a={a}\n")
 
+    return a
 
 def interp(x, xp, fp):
   np_ = np.interp(x, xp, fp)
