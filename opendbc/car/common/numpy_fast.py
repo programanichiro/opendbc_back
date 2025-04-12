@@ -1,8 +1,12 @@
+import numpy as np
+
 def clip(x, lo, hi):
+  return np.clip(x, lo, hi)
   return max(lo, min(hi, x))
 
 
 def interp(x, xp, fp):
+  return np.interp(x, xp, fp)
   N = len(xp)
 
   def get_interp(xv):
@@ -18,5 +22,6 @@ def interp(x, xp, fp):
 
 
 def mean(x):
+  return np.mean(x)
   return sum(x) / len(x)
 
