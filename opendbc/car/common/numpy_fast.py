@@ -2,8 +2,8 @@ import numpy as np
 from numbers import Number
 
 def clip(x, lo, hi):
-    with open('debug_trace.txt', 'a') as f:
-        f.write(f"/tmp/clip called: x={x}, lo={lo}, hi={hi}\n")
+    with open('/tmp/debug_trace.txt', 'a') as f:
+        f.write(f"clip called: x={x}, lo={lo}, hi={hi}\n")
 
     a = max(lo, min(hi, x))
     np_ = np.clip(x, lo, hi)
