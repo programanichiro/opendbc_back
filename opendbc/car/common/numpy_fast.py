@@ -1,12 +1,18 @@
 import numpy as np
 
 def clip(x, lo, hi):
-  return np.clip(x, lo, hi)
-  return max(lo, min(hi, x))
+  np_ = np.clip(x, lo, hi)
+  a = max(lo, min(hi, x))
+  if a != np_:
+    with open('/tmp/debug_out_o','w') as fp:
+      fp.write("clip:%f, %f" % (a , np_))
+    return a
+  else:
+    return np_
 
 
 def interp(x, xp, fp):
-  return np.interp(x, xp, fp)
+  np_ = np.interp(x, xp, fp)
   N = len(xp)
 
   def get_interp(xv):
@@ -18,7 +24,13 @@ def interp(x, xp, fp):
       fp[0] if hi == 0 else
       (xv - xp[low]) * (fp[hi] - fp[low]) / (xp[hi] - xp[low]) + fp[low])
 
-  return [get_interp(v) for v in x] if hasattr(x, '__iter__') else get_interp(x)
+  a = [get_interp(v) for v in x] if hasattr(x, '__iter__') else get_interp(x)
+  if a != np_:
+    with open('/tmp/debug_out_v','w') as fp:
+      fp.write("interp:%f, %f" % (a , np_))
+    return a
+  else:
+    return np_
 
 
 def mean(x):
