@@ -16,6 +16,11 @@ def clip(x, lo, hi):
         f.flush()
         os.fsync(f.fileno())  # 明示的に書き込みをディスク
 
+    with open('/tmp/debug_trace.txt', 'a') as f:
+        f.write(f"returning np_: {np_} type={type(np_)}\n")
+        f.flush()
+        os.fsync(f.fileno())
+        
     # return a
     return np_
 
