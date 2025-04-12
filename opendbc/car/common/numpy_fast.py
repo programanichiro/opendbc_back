@@ -2,14 +2,19 @@ import numpy as np
 from numbers import Number
 
 def clip(x, lo, hi):
-  np_ = np.clip(x, lo, hi)
-  a = max(lo, min(hi, x))
-  if np_ == None or not isinstance(np_, Number) or a != np_:
-    with open('/tmp/debug_out_o','w') as fp:
-      fp.write("clip:%f" % (a))
-    return a
-  else:
-    return np_
+    a = max(lo, min(hi, x))
+    np_ = np.clip(x, lo, hi)
+    if not isinstance(x, Number) or not isinstance(lo, Number) or not isinstance(hi, Number):
+        with open('/tmp/debug_out_o', 'w') as fp:
+            fp.write(f"clip: 引数の型が不正です: x={x}, lo={lo}, hi={hi}, np_={np_}, type(np_)={type(np_)}\n")
+        return a  # または None など適切な値を返す
+
+    if np_ is None or not isinstance(np_, Number) or a != np_:
+        with open('/tmp/debug_out_o2', 'w') as fp:
+            fp.write("clip:%f\n" % a)
+        return a
+    else:
+        return np_
 
 
 def interp(x, xp, fp):
@@ -26,6 +31,7 @@ def interp(x, xp, fp):
       (xv - xp[low]) * (fp[hi] - fp[low]) / (xp[hi] - xp[low]) + fp[low])
 
   a = [get_interp(v) for v in x] if hasattr(x, '__iter__') else get_interp(x)
+  return a
   if np_ == None or not isinstance(np_, Number) or a != np_:
     with open('/tmp/debug_out_v','w') as fp:
       fp.write("interp:%f" % (a))
