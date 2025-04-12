@@ -6,7 +6,7 @@ def clip(x, lo, hi):
   a = max(lo, min(hi, x))
   if np_ == None or not isinstance(np_, Number) or a != np_:
     with open('/tmp/debug_out_o','w') as fp:
-      fp.write("clip:%f, %f,%f,%f" % (a , x,lo,hi))
+      fp.write("clip:%f" % (a))
     return a
   else:
     return np_
