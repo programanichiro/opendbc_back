@@ -5,7 +5,7 @@ def clip(x, lo, hi):
   a = max(lo, min(hi, x))
   if a != np_:
     with open('/tmp/debug_out_o','w') as fp:
-      fp.write("clip:%f, %f" % (a , np_))
+      fp.write("clip:%f, %f,%f,%f" % (a , x,lo,hi))
     return a
   else:
     return np_
@@ -27,7 +27,7 @@ def interp(x, xp, fp):
   a = [get_interp(v) for v in x] if hasattr(x, '__iter__') else get_interp(x)
   if a != np_:
     with open('/tmp/debug_out_v','w') as fp:
-      fp.write("interp:%f, %f" % (a , np_))
+      fp.write("interp:%f" % (a))
     return a
   else:
     return np_
