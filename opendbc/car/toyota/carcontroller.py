@@ -91,7 +91,7 @@ class CarController(CarControllerBase):
     self.lock_flag = False
     self.lock_speed = 0
     try:
-      with open('../../../run_auto_lock.txt','r') as fp:
+      with open('/data/run_auto_lock.txt','r') as fp:
         lock_speed_str = fp.read() #ロックするスピードをテキストで30みたいに書いておく。ファイルが無いか0でオートロック無し。
         if lock_speed_str:
           self.lock_speed = int(lock_speed_str)
