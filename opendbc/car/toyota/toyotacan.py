@@ -179,3 +179,9 @@ def create_ui_command(packer, steer, chime, left_line, right_line, left_lane_dep
     ]})
 
   return packer.make_can_msg("LKAS_HUD", 0, values)
+
+def create_acc_set_command(packer):
+  values = {
+    "CRUISE_ACTIVE": 1, #これでSETが点く？
+  }
+  return packer.make_can_msg("PCM_CRUISE", 0, values)
