@@ -261,7 +261,7 @@ class CarController(CarControllerBase):
 
     if self.accel_engage_counter == 0 and CS.out.cruiseState.enabled == False and CS.out.vEgo * 3.6 > (1 if int(accel_engaged_str) >= 3 else 30) and CS.out.gasPressed:
       self.accel_engage_counter = int(1.0 / DT_CTRL)
-      can_sends.append(toyotacan.create_accel_set_command(self.packer))
+      can_sends.append(toyotacan.create_acc_set_command(self.packer))
 
     if self.accel_engage_counter > 0:
       self.accel_engage_counter -= 1
