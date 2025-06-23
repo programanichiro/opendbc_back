@@ -100,6 +100,7 @@ class CarController(CarControllerBase):
     self.before_ang = 0
     self.before_ang_ct = 0
     self.new_torques = []
+    self.accel_engage_counter = 0
 
   def update(self, CC, CS, now_nanos):
     actuators = CC.actuators
@@ -249,6 +250,21 @@ class CarController(CarControllerBase):
         can_sends.append(CanData(0x750, b'\x40\x05\x30\x11\x00\x80\x00\x00', 0)) #auto lock
         self.lock_flag = True
       self.now_gear = gear
+
+    accel_engaged_str = '0'
+    if CS.out.gasPressed and CS.out.cruiseState.enabled == False:
+      try:
+        with open('/dev/shm/accel_engaged.txt','r') as fp: #これも毎度やると遅くなる。踏んだ瞬間だけ取る
+          accel_engaged_str = fp.read()
+      except Exception as e:
+        pass
+
+    if self.accel_engage_counter == 0 and CS.out.cruiseState.enabled == False and CS.out.vEgo * 3.6 > (1 if int(accel_engaged_str) >= 3 else 30) and CS.out.gasPressed:
+      self.accel_engage_counter = int(1.0 / DT_CTRL)
+      can_sends.append(toyotacan.create_accel_set_command(self.packer))
+
+    if self.accel_engage_counter > 0:
+      self.accel_engage_counter -= 1
 
     # Press distance button until we are at the correct bar length. Only change while enabled to avoid skipping startup popup
     if self.frame % 6 == 0 and self.CP.openpilotLongitudinalControl:
