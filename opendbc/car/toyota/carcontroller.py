@@ -260,12 +260,13 @@ class CarController(CarControllerBase):
       except Exception as e:
         pass
 
-    if self.accel_engage_counter == 0 and CS.out.cruiseState.enabled == False and (CS.out.vEgo * 3.6 > (1 if int(accel_engaged_str) >= 3 else 30) and CS.out.gasPressed or brake_and_stop):
-      self.accel_engage_counter = int(1.0 / DT_CTRL)
+    acc_set = False
+    if CS.out.cruiseState.enabled == False and (CS.out.vEgo * 3.6 > (1 if int(accel_engaged_str) >= 3 else 30) and CS.out.gasPressed or brake_and_stop):
       can_sends.append(toyotacan.create_acc_set_command(self.packer))
+      acc_set = True
 
-    if self.accel_engage_counter > 0:
-      self.accel_engage_counter -= 1
+    with open('/tmp/debug_out_w','w') as fp:
+      fp.write("acc_set:%d,%d,%d" % (acc_set,brake_and_stop,CS.out.cruiseState.enabled))
 
     # Press distance button until we are at the correct bar length. Only change while enabled to avoid skipping startup popup
     if self.frame % 6 == 0 and self.CP.openpilotLongitudinalControl:
