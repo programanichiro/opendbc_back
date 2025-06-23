@@ -240,6 +240,9 @@ class CarState(CarStateBase):
     ret.cruiseState.nonAdaptive = self.pcm_acc_status in (1, 2, 3, 4, 5, 6)
     self.pcm_neutral_force = cp.vl["PCM_CRUISE"]["NEUTRAL_FORCE"]
 
+    with open('/tmp/debug_out_v','w') as fp:
+      fp.write("PCM_CRUISE:%d,%d" % (self.pcm_acc_status,ret.cruiseState.enabled))
+
     ret.genericToggle = bool(cp.vl["LIGHT_STALK"]["AUTO_HIGH_BEAM"])
     ret.espDisabled = cp.vl["ESP_CONTROL"]["TC_DISABLED"] != 0
 

@@ -252,14 +252,15 @@ class CarController(CarControllerBase):
       self.now_gear = gear
 
     accel_engaged_str = '0'
-    if CS.out.gasPressed and CS.out.cruiseState.enabled == False:
+    brake_and_stop = CS.out.brakePressed and CS.out.vEgo <= 0.1/3.6
+    if (CS.out.gasPressed or brake_and_stop) and CS.out.cruiseState.enabled == False:
       try:
         with open('/dev/shm/accel_engaged.txt','r') as fp: #これも毎度やると遅くなる。踏んだ瞬間だけ取る
           accel_engaged_str = fp.read()
       except Exception as e:
         pass
 
-    if self.accel_engage_counter == 0 and CS.out.cruiseState.enabled == False and CS.out.vEgo * 3.6 > (1 if int(accel_engaged_str) >= 3 else 30) and CS.out.gasPressed:
+    if self.accel_engage_counter == 0 and CS.out.cruiseState.enabled == False and (CS.out.vEgo * 3.6 > (1 if int(accel_engaged_str) >= 3 else 30) and CS.out.gasPressed or brake_and_stop):
       self.accel_engage_counter = int(1.0 / DT_CTRL)
       can_sends.append(toyotacan.create_acc_set_command(self.packer))
 
