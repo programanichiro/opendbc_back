@@ -115,6 +115,22 @@ class CarInterface(CarInterfaceBase):
       # TODO: Some of these platforms are not advertised to have full range ACC, are they similar to SNG_WITHOUT_DSU cars?
       stop_and_go = True
 
+    if candidate == CAR.TOYOTA_COROLLA_TSS2:
+      lexus_ux = 0
+      for fw in car_fw:
+        if fw.ecu == "eps" and fw.fwVersion == b'8965B76101\x00\x00\x00\x00\x00\x00':
+          lexus_ux += 1
+        if fw.ecu == "abs" and fw.fwVersion == b'F152676311\x00\x00\x00\x00\x00\x00':
+          lexus_ux += 1
+        if fw.ecu == "engine" and fw.fwVersion == b'F152676311\x00\x00\x00\x00\x00\x00':
+          lexus_ux += 1
+      if lexus_ux == 3:
+        #LEXUS UX、FFモデル（6AA-MZAH10）で1550kg、4WDモデル（6AA-MZAH15）で1610kg
+        #カローラセダンは1230kg～1430kg
+        ret.mass = 1580.0 #カローラより200Kg重い
+        #LEXUS UX250hのホイールベースは、2640mm、これはローラセダンと同じ
+
+
     # TODO: these models can do stop and go, but unclear if it requires sDSU or unplugging DSU.
     #  For now, don't list stop and go functionality in the docs
     if ret.flags & ToyotaFlags.SNG_WITHOUT_DSU:
