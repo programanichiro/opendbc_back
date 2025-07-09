@@ -1,4 +1,4 @@
-from opendbc.car import Bus, structs, get_safety_config, uds
+from opendbc.car import Bus, structs, get_safety_config, uds, scale_rot_inertia, scale_tire_stiffness
 from opendbc.car.toyota.carstate import CarState
 from opendbc.car.toyota.carcontroller import CarController
 from opendbc.car.toyota.radar_interface import RadarInterface
@@ -132,6 +132,9 @@ class CarInterface(CarInterfaceBase):
         ret.mass = 1580.0 #カローラより200Kg重い
         #LEXUS UX250hのホイールベースは、2640mm、これはローラセダンと同じ
 
+    #以下再計算
+    ret.rotationalInertia = scale_rot_inertia(ret.mass, ret.wheelbase)
+    ret.tireStiffnessFront, ret.tireStiffnessRear = scale_tire_stiffness(ret.mass, ret.wheelbase, ret.centerToFront, ret.tireStiffnessFactor)
 
     # TODO: these models can do stop and go, but unclear if it requires sDSU or unplugging DSU.
     #  For now, don't list stop and go functionality in the docs
