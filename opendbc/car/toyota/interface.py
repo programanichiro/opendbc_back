@@ -84,6 +84,8 @@ class CarInterface(CarInterfaceBase):
         elif fw.ecu == "eps" and fw.fwVersion == b'8965B47060\x00\x00\x00\x00\x00\x00':
           ret.flags |= ToyotaFlags.POWER_STEERING_TSS2.value #パワステモーター47700(8965B47060)はグッドアングルセンサー＆パワフルハンドリング、TSS2相当
           ret.steerRatio = 13.4 #TSS2相当に。様子見。
+          ret.mass = 1530.0 #PHVの重さでテスト
+
 
     elif candidate in (CAR.LEXUS_RX, CAR.LEXUS_RX_TSS2):
       stop_and_go = True
