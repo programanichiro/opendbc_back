@@ -1,4 +1,4 @@
-from opendbc.car import Bus, structs, get_safety_config, uds, scale_rot_inertia, scale_tire_stiffness
+from opendbc.car import Bus, structs, get_safety_config, uds
 from opendbc.car.toyota.carstate import CarState
 from opendbc.car.toyota.carcontroller import CarController
 from opendbc.car.toyota.radar_interface import RadarInterface
@@ -84,8 +84,6 @@ class CarInterface(CarInterfaceBase):
         elif fw.ecu == "eps" and fw.fwVersion == b'8965B47060\x00\x00\x00\x00\x00\x00':
           ret.flags |= ToyotaFlags.POWER_STEERING_TSS2.value #パワステモーター47700(8965B47060)はグッドアングルセンサー＆パワフルハンドリング、TSS2相当
           ret.steerRatio = 13.4 #TSS2相当に。様子見。
-          ret.mass = 1530.0 #PHVの重さでテスト
-
 
     elif candidate in (CAR.LEXUS_RX, CAR.LEXUS_RX_TSS2):
       stop_and_go = True
@@ -116,25 +114,6 @@ class CarInterface(CarInterfaceBase):
     elif candidate in (CAR.TOYOTA_CHR, CAR.TOYOTA_CAMRY, CAR.TOYOTA_SIENNA, CAR.LEXUS_CTH, CAR.LEXUS_NX):
       # TODO: Some of these platforms are not advertised to have full range ACC, are they similar to SNG_WITHOUT_DSU cars?
       stop_and_go = True
-
-    if candidate == CAR.TOYOTA_COROLLA_TSS2:
-      lexus_ux = 0
-      for fw in car_fw:
-        if fw.ecu == "eps" and fw.fwVersion == b'8965B76101\x00\x00\x00\x00\x00\x00':
-          lexus_ux += 1
-        if fw.ecu == "abs" and fw.fwVersion == b'F152676311\x00\x00\x00\x00\x00\x00':
-          lexus_ux += 1
-        if fw.ecu == "engine" and fw.fwVersion == b'F152676311\x00\x00\x00\x00\x00\x00':
-          lexus_ux += 1
-      if lexus_ux == 3:
-        #LEXUS UX、FFモデル（6AA-MZAH10）で1550kg、4WDモデル（6AA-MZAH15）で1610kg
-        #カローラセダンは1230kg～1430kg
-        ret.mass = 1580.0 #カローラより200Kg重い
-        #LEXUS UX250hのホイールベースは、2640mm、これはローラセダンと同じ
-
-    #以下再計算
-    ret.rotationalInertia = scale_rot_inertia(ret.mass, ret.wheelbase)
-    ret.tireStiffnessFront, ret.tireStiffnessRear = scale_tire_stiffness(ret.mass, ret.wheelbase, ret.centerToFront, ret.tireStiffnessFactor)
 
     # TODO: these models can do stop and go, but unclear if it requires sDSU or unplugging DSU.
     #  For now, don't list stop and go functionality in the docs

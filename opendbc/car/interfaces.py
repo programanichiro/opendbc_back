@@ -154,6 +154,14 @@ class CarInterfaceBase(ABC):
 
     ret = cls._get_params(ret, candidate, fingerprint, car_fw, alpha_long, is_release, docs)
 
+    try:
+      with open('/data/vehicle_mass.txt','r') as fp:
+        vehicle_mass_str = fp.read() #車重を変更する
+        if vehicle_mass_str:
+          ret.mass = float(vehicle_mass_str)
+    except Exception as e:
+      pass
+
     # Vehicle mass is published curb weight plus assumed payload such as a human driver; notCars have no assumed payload
     if not ret.notCar:
       ret.mass = ret.mass + STD_CARGO_KG
