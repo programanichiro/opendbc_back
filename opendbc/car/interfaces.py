@@ -157,7 +157,7 @@ class CarInterfaceBase(ABC):
     try:
       with open('/data/vehicle_mass.txt','r') as fp:
         vehicle_mass_str = fp.read() #車重を変更する
-        if vehicle_mass_str:
+        if vehicle_mass_str and float(vehicle_mass_str) > 0:
           ret.mass = float(vehicle_mass_str)
     except Exception as e:
       pass
