@@ -165,8 +165,8 @@ class CarController(CarControllerBase):
           elif self.lane_return_power < 100:
             self.lane_return_power += 1
           new_torque -= lane_d_info * self.lane_return_power * 15 #引くとセンターへ車体を戻す。
-          with open('/tmp/debug_out_v','w') as fp:
-            fp.write('lane_return_power:%d' % (self.lane_return_power))
+          # with open('/tmp/debug_out_v','w') as fp:
+          #   fp.write('lane_return_power:%d' % (self.lane_return_power))
     except Exception as e:
       pass
     apply_torque = apply_meas_steer_torque_limits(new_torque, self.last_torque, CS.out.steeringTorqueEps, self.params)
