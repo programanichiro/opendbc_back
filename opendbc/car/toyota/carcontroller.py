@@ -101,7 +101,7 @@ class CarController(CarControllerBase):
     self.before_ang_ct = 0
     self.new_torques = []
     self.accel_engage_counter = 0
-    self.lane_return_power = 30
+    self.lane_return_power = 100
 
   def update(self, CC, CS, now_nanos):
     actuators = CC.actuators
@@ -162,9 +162,11 @@ class CarController(CarControllerBase):
           #new_torqueはマイナスで右に曲がる。
           if CS.out.steeringPressed:
             self.lane_return_power = 0
-          elif self.lane_return_power < 30:
+          elif self.lane_return_power < 100:
             self.lane_return_power += 1
-          new_torque -= lane_d_info * 100 * self.lane_return_power #引くとセンターへ車体を戻す。
+          new_torque -= lane_d_info * self.lane_return_power * 15 #引くとセンターへ車体を戻す。
+          with open('/tmp/debug_out_v','w') as fp:
+            fp.write('lane_return_power:%d' % (self.lane_return_power))
     except Exception as e:
       pass
     apply_torque = apply_meas_steer_torque_limits(new_torque, self.last_torque, CS.out.steeringTorqueEps, self.params)
