@@ -63,7 +63,7 @@ class CarInterface(CarInterfaceBase):
     # Detect 0x343 on bus 2, if detected on bus 2 and is not TSS 2, it means DSU is bypassed
     if not (ret.flags & ToyotaFlags.SMART_DSU) and 0x343 in fingerprint[2] and candidate not in TSS2_CAR:
       #SMART_DSUと共存できない。
-      if True: #リルートハーネス。DSU接続車両と区別したい。
+      if not 0x343 in fingerprint[0]: #bus:0にはACC_CONTROLが出ない？
         ret.flags |= ToyotaFlags.DSU_BYPASS.value
       else:
         #DSUが接続されているTSSP車両
