@@ -1,4 +1,5 @@
 from opendbc.car import Bus, structs, get_safety_config, uds
+from opendbc.can.parser import CANParser
 from opendbc.car.toyota.carstate import CarState
 from opendbc.car.toyota.carcontroller import CarController
 from opendbc.car.toyota.radar_interface import RadarInterface
@@ -61,7 +62,14 @@ class CarInterface(CarInterfaceBase):
 
     # Detect 0x343 on bus 2, if detected on bus 2 and is not TSS 2, it means DSU is bypassed
     if not (ret.flags & ToyotaFlags.SMART_DSU) and 0x343 in fingerprint[2] and candidate not in TSS2_CAR:
-      ret.flags |= ToyotaFlags.DSU_BYPASS.value #もしかしてSMART_DSUと共存できないのかも。
+      try:
+        cam_messages = [("PCS_HUD", 1),]
+        cp_acc = CANParser(DBC[candidate][Bus.pt], cam_messages, 2)
+        stockFcw = bool(cp_acc.vl["PCS_HUD"]["FCW"]) #DSU接続車両だと例外が起きる？
+        ret.flags |= ToyotaFlags.DSU_BYPASS.value #SMART_DSUと共存できない。
+      except Exception as e:
+        #DSUが接続されているTSSP車両
+        pass
 
     # In TSS2 cars, the camera does long control
     found_ecus = [fw.ecu for fw in car_fw]
