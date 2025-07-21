@@ -64,12 +64,14 @@ class CarInterface(CarInterfaceBase):
     if not (ret.flags & ToyotaFlags.SMART_DSU) and 0x343 in fingerprint[2] and candidate not in TSS2_CAR:
       try:
         cam_messages = [
+          ("ACC_CONTROL", 33),
           ("PCS_HUD", 1),
           ("PRE_COLLISION", 33),
           ]
         cp_acc = CANParser(DBC[candidate][Bus.pt], cam_messages, 2)
         stockFcw = bool(cp_acc.vl["PCS_HUD"]["FCW"]) #DSU接続車両だと例外が起きる？
         stockAeb = bool(cp_acc.vl["PRE_COLLISION"]["PRECOLLISION_ACTIVE"] and cp_acc.vl["PRE_COLLISION"]["FORCE"] < -1e-5) #DSU接続車両だと例外が起きる？
+        distance_button = cp_acc.vl["ACC_CONTROL"]["DISTANCE"] #DSU接続車両だと例外が起きる？
         ret.flags |= ToyotaFlags.DSU_BYPASS.value #SMART_DSUと共存できない。
       except Exception as e:
         #DSUが接続されているTSSP車両
