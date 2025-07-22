@@ -64,25 +64,7 @@ class CarInterface(CarInterfaceBase):
     # Detect 0x343 on bus 2, if detected on bus 2 and is not TSS 2, it means DSU is bypassed
     if not (ret.flags & ToyotaFlags.SMART_DSU) and 0x343 in fingerprint[2] and candidate not in TSS2_CAR:
       #SMART_DSUと共存できない。
-      cam_messages = [
-        ("ACC_CONTROL", 33),
-        ("PCS_HUD", 1),
-        ("PRE_COLLISION", 33),
-        ]
-      packer = CANPacker(DBC[candidate][Bus.pt])
-      parser = CANParser(DBC[candidate][Bus.pt], cam_messages, 2)
-
-      for i in range(1, 100):
-        t = int(0.01 * i * 1e9)
-        msg = packer.make_can_msg("ACC_CONTROL", 0, {})
-        parser.update_strings([t, [msg]])
-        msg = packer.make_can_msg("PCS_HUD", 0, {})
-        parser.update_strings([t, [msg]])
-        msg = packer.make_can_msg("PRE_COLLISION", 0, {})
-        parser.update_strings([t, [msg]])
-
-      canValid = parser.can_valid
-      if canValid:
+      if True:
         ret.flags |= ToyotaFlags.DSU_BYPASS.value
       else:
         #DSUが接続されているTSSP車両
