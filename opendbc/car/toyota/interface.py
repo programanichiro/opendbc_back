@@ -1,5 +1,6 @@
 from opendbc.car import Bus, structs, get_safety_config, uds
 from opendbc.can.parser import CANParser
+from opendbc.can.packer import CANPacker
 from opendbc.car.toyota.carstate import CarState
 from opendbc.car.toyota.carcontroller import CarController
 from opendbc.car.toyota.radar_interface import RadarInterface
@@ -68,9 +69,19 @@ class CarInterface(CarInterfaceBase):
         ("PCS_HUD", 1),
         ("PRE_COLLISION", 33),
         ]
-      cp_acc = CANParser(DBC[candidate][Bus.pt]) #必要？
-      cp_acc = CANParser(DBC[candidate][Bus.pt], cam_messages, 2)
-      canValid = cp_acc.can_valid
+      packer = CANPacker(DBC[candidate][Bus.pt])
+      parser = CANParser(DBC[candidate][Bus.pt], cam_messages, 2)
+
+      for i in range(1, 100):
+        t = int(0.01 * i * 1e9)
+        msg = packer.make_can_msg("ACC_CONTROL", 0, {})
+        parser.update_strings([t, [msg]])
+        msg = packer.make_can_msg("PCS_HUD", 0, {})
+        parser.update_strings([t, [msg]])
+        msg = packer.make_can_msg("PRE_COLLISION", 0, {})
+        parser.update_strings([t, [msg]])
+
+      canValid = parser.can_valid
       if canValid:
         ret.flags |= ToyotaFlags.DSU_BYPASS.value
       else:
