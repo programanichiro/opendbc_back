@@ -107,6 +107,8 @@ class CarState(CarStateBase):
       can_gear = int(cp.vl["GEAR_PACKET"]["GEAR"])
       if not self.CP.enableDsu and not self.CP.flags & ToyotaFlags.DISABLE_RADAR.value:
         ret.stockAeb = bool(cp_acc.vl["PRE_COLLISION"]["PRECOLLISION_ACTIVE"] and cp_acc.vl["PRE_COLLISION"]["FORCE"] < -1e-5)
+      if self.CP.carFingerprint != CAR.TOYOTA_MIRAI:
+        ret.engineRpm = cp.vl["ENGINE_RPM"]["RPM"]
 
       if self.CP.flags & ToyotaFlags.HYBRID:
         ret.gas = cp.vl["GAS_PEDAL_HYBRID"]["GAS_PEDAL"]
@@ -326,6 +328,8 @@ class CarState(CarStateBase):
       ]
     else:
       pt_messages.append(("VSC1S07", 20))
+      if CP.carFingerprint not in [CAR.TOYOTA_MIRAI]:
+        pt_messages.append(("ENGINE_RPM", 42))
 
       if CP.flags & ToyotaFlags.HYBRID:
         pt_messages.append(("GAS_PEDAL_HYBRID", 33))
