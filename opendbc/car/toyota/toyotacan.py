@@ -180,6 +180,16 @@ def create_ui_command(packer, steer, chime, left_line, right_line, left_lane_dep
 
   return packer.make_can_msg("LKAS_HUD", 0, values)
 
+def toyota_checksum(address: int, sig, d: bytearray) -> int:
+  s = len(d)
+  addr = address
+  while addr:
+    s += addr & 0xFF
+    addr >>= 8
+  for i in range(len(d) - 1):
+    s += d[i]
+  return s & 0xFF
+
 # def create_acc_set_command(packer):
 #   values = {
 #     "CRUISE_ACTIVE": 1, #これでSETが点く？
