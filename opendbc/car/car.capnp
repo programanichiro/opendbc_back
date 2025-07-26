@@ -174,6 +174,8 @@ struct CarState {
   standstill @18 :Bool;
   wheelSpeeds @2 :WheelSpeeds;
 
+  # gas pedal, 0.0-1.0
+  gas @3 :Float32;        # this is user pedal only
   gasPressed @4 :Bool;    # this is user pedal only
 
   engineRpm @46 :Float32;
@@ -287,7 +289,6 @@ struct CarState {
 
   # deprecated
   errorsDEPRECATED @0 :List(OnroadEventDEPRECATED.EventName);
-  gasDEPRECATED @3 :Float32;        # this is user pedal only
   brakeLightsDEPRECATED @19 :Bool;
   steeringRateLimitedDEPRECATED @29 :Bool;
   canMonoTimesDEPRECATED @12: List(UInt64);
