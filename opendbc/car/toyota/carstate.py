@@ -44,6 +44,7 @@ class CarState(CarStateBase):
 
     self.lkas_enabled = False
     self.prev_lkas_enabled = False
+    self.prev_hazard = -1
 
     self.brake_state = False
     # self.params = Params()
@@ -171,6 +172,12 @@ class CarState(CarStateBase):
     ret.gearShifter = self.parse_gear_shifter(self.shifter_values.get(can_gear, None))
     ret.leftBlinker = cp.vl["BLINKERS_STATE"]["TURN_SIGNALS"] == 1
     ret.rightBlinker = cp.vl["BLINKERS_STATE"]["TURN_SIGNALS"] == 2
+
+    hazard = cp.vl["BLINKERS_STATE"]["HAZARD_LIGHT"]
+    if self.prev_hazard != hazard:
+      self.prev_hazard = hazard
+      with open('/tmp/hazard_light.txt','w') as fp:
+        fp.write("%d" % (hazard))
 
     ret.steeringTorque = cp.vl["STEER_TORQUE_SENSOR"]["STEER_TORQUE_DRIVER"]
     ret.steeringTorqueEps = cp.vl["STEER_TORQUE_SENSOR"]["STEER_TORQUE_EPS"] * self.eps_torque_scale
