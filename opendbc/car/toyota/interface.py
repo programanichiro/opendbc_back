@@ -69,20 +69,26 @@ class CarInterface(CarInterfaceBase):
         ]
       packer = CANPacker(DBC[candidate][Bus.pt])
       parser = CANParser(DBC[candidate][Bus.pt], cam_messages, 2)
-      values = {
-        "ACCEL_CMD": 0,
-        "ACC_TYPE": 1,
-        "DISTANCE": 0,
-        "MINI_CAR": 0,
-        "PERMIT_BRAKING": 0,
-        "RELEASE_STANDSTILL": 0,
-        "CANCEL_REQ": 0,
-        "ALLOW_LONG_PRESS": 1,
-        "ACC_CUT_IN": 0,
-      }
-      msg = packer.make_can_msg("ACC_CONTROL", 0, values)
-      parser.update([0, [msg]])
-      if parser.can_valid:
+      can_valid = False
+      for i in range(1, 100):
+        t = int(0.01 * i * 1e9)
+        values = {
+          "ACCEL_CMD": 0,
+          "ACC_TYPE": 1,
+          "DISTANCE": 0,
+          "MINI_CAR": 0,
+          "PERMIT_BRAKING": 0,
+          "RELEASE_STANDSTILL": 0,
+          "CANCEL_REQ": 0,
+          "ALLOW_LONG_PRESS": 1,
+          "ACC_CUT_IN": 0,
+        }
+        msg = packer.make_can_msg("ACC_CONTROL", 0, values)
+        parser.update([t, [msg]])
+        if parser.can_valid:
+          can_valid = True
+          break
+      if can_valid:
       #if Params().get_bool("IgnoreRerouteHarness") == False: #リルートハーネス装着の区別ができないので、機能にスイッチをつけた。
         ret.flags |= ToyotaFlags.DSU_BYPASS.value
       else:
