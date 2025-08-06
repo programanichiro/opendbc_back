@@ -62,13 +62,9 @@ class CarInterface(CarInterfaceBase):
       ret.flags |= ToyotaFlags.SMART_DSU.value
 
     # Detect 0x343 on bus 2, if detected on bus 2 and is not TSS 2, it means DSU is bypassed
-    if not (ret.flags & ToyotaFlags.SMART_DSU) and 0x343 in fingerprint[2] and candidate not in TSS2_CAR:
+    if not (ret.flags & ToyotaFlags.SMART_DSU) and any(msg in fingerprint[2] for msg in (0x343)) and candidate not in TSS2_CAR:
       #SMART_DSUと共存できない。
-      if Params().get_bool("IgnoreRerouteHarness") == False: #リルートハーネス装着の区別ができないので、機能にスイッチをつけた。
-        ret.flags |= ToyotaFlags.DSU_BYPASS.value
-      else:
-        #DSUが接続されているTSSP車両
-        pass
+      ret.flags |= ToyotaFlags.DSU_BYPASS.value
 
     # In TSS2 cars, the camera does long control
     found_ecus = [fw.ecu for fw in car_fw]
