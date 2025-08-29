@@ -350,7 +350,9 @@ static bool toyota_tx_hook(const CANPacket_t *msg) {
   if (msg->addr == 0x750U) {
     // this address is sub-addressed. only allow tester present to radar (0xF)
     bool invalid_uds_msg = (GET_BYTES(msg, 0, 4) != 0x003E020FU) || (GET_BYTES(msg, 4, 4) != 0x0U);
-    if (invalid_uds_msg) {
+    bool invalid_door_lock_msg = (GET_BYTES(msg, 0, 4) != 0x11300540U) || (GET_BYTES(msg, 4, 4) != 0x00004000U);
+    bool invalid_door_unlock_msg = (GET_BYTES(msg, 0, 4) != 0x11300540U) || (GET_BYTES(msg, 4, 4) != 0x00008000U);
+    if (invalid_uds_msg && invalid_door_lock_msg && invalid_door_unlock_msg) {
       tx = 0;
     }
   }
