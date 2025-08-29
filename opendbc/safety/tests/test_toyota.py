@@ -111,6 +111,8 @@ class TestToyotaSafetyBase(common.PandaCarSafetyTest, common.LongitudinalAccelSa
         msg = self._torque_meas_msg(0)
       if msg == "pcm":
         msg = self._pcm_status_msg(True)
+      msg[0].data[0] |= 0x40
+      msg[0].data[3] |= 0x40
       self.assertTrue(self._rx(msg))
       msg[0].data[4] = 0
       msg[0].data[5] = 0
