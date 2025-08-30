@@ -34,8 +34,7 @@
 #define TOYOTA_COMMON_RX_CHECKS(lta)                                                                                                       \
   {.msg = {{ 0xaa, 0, 8, 83U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},  \
   {.msg = {{0x260, 0, 8, 50U, .ignore_counter = true, .ignore_quality_flag=!(lta)}, { 0 }, { 0 }}},                           \
-  {.msg = {{0x1D3, 0, 8, 33U, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}} /* MADS Cruise Main */    \
-  //{.msg = {{0x412, 2, 8, 01U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true,}, { 0 }, { 0 }}}, /* MADS LKAS Button */   \
+  {.msg = {{0x1D3, 0, 8, 33U, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, /* MADS Cruise Main */    \
 
 #define TOYOTA_RX_CHECKS(lta)                                                                                                               \
   TOYOTA_COMMON_RX_CHECKS(lta)                                                                                                              \
