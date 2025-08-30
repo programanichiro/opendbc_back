@@ -162,12 +162,7 @@ static void toyota_rx_hook(const CANPacket_t *msg) {
     }
 
     // wrap lateral controls on main
-    if (msg->addr == 0x1D3 || msg->addr == 0xaaU) {
-      // ACC main switch on is a prerequisite to enter controls, exit controls immediately on main switch off
-      // Signal: PCM_CRUISE_2/MAIN_ON at 15th bit
-      acc_main_on = (msg->addr == 0xaaU) ? acc_main_on : GET_BIT(msg, 15U);
-      lateral_controls_allowed = (msg->addr == 0xaaU) ? lateral_controls_allowed : acc_main_on;
-    }
+    lateral_controls_allowed = (msg->addr != 0x1D3) ? : GET_BIT(msg, 15U); // Signal: PCM_CRUISE_2/MAIN_ON at 15th bit
 
     // sample speed
     if (msg->addr == 0xaaU) {
