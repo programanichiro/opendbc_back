@@ -162,8 +162,10 @@ static void toyota_rx_hook(const CANPacket_t *msg) {
     }
 
     // wrap lateral controls on main
-    lateral_controls_allowed = (msg->addr != 0x1D3) ? lateral_controls_allowed : GET_BIT(msg, 15U); // Signal: PCM_CRUISE_2/MAIN_ON at 15th bit
-
+    //lateral_controls_allowed = (msg->addr != 0x1D3) ? lateral_controls_allowed : GET_BIT(msg, 15U); // Signal: PCM_CRUISE_2/MAIN_ON at 15th bit
+    acc_main_on = (msg->addr != 0x1D3U) ? acc_main_on : GET_BIT(msg, 15U);
+    lateral_controls_allowed = (msg->addr != 0x1D3U) ? lateral_controls_allowed : acc_main_on;
+    
     // sample speed
     if (msg->addr == 0xaaU) {
       int speed = 0;
