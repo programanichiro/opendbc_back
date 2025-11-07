@@ -85,11 +85,15 @@ class CarInterface(CarInterfaceBase):
       stop_and_go = True
       # Only give steer angle deadzone to for bad angle sensor prius
       for fw in car_fw:
-        if fw.ecu == "eps" and not fw.fwVersion == b'8965B47060\x00\x00\x00\x00\x00\x00':
+        eps_tss2_tssp = False
+        if fw.ecu == "eps" and (fw.fwVersion == b'8965B47060\x00\x00\x00\x00\x00\x00' or #epsモジュール47700
+                                  fw.fwVersion == b'8965B47070\x00\x00\x00\x00\x00\x00' ): #epsモジュール47600
+          eps_tss2_tssp = True #グッドアングルセンサー＆パワフルハンドリング、TSS2相当
+        if fw.ecu == "eps" and not eps_tss2_tssp: #47441など、弱パワステ
           ret.steerActuatorDelay = 0.25
           CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning, steering_angle_deadzone_deg=0.2)
-        elif fw.ecu == "eps" and fw.fwVersion == b'8965B47060\x00\x00\x00\x00\x00\x00':
-          ret.flags |= ToyotaFlags.POWER_STEERING_TSS2.value #パワステモーター47700(8965B47060)はグッドアングルセンサー＆パワフルハンドリング、TSS2相当
+        elif fw.ecu == "eps" and eps_tss2_tssp:
+          ret.flags |= ToyotaFlags.POWER_STEERING_TSS2.value
           ret.steerRatio = 13.4 #TSS2相当に。様子見。
 
     elif candidate in (CAR.LEXUS_RX, CAR.LEXUS_RX_TSS2):
