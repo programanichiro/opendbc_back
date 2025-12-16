@@ -516,4 +516,8 @@ class CarController(CarControllerBase):
     new_actuators.accel = self.accel
 
     self.frame += 1
+
+    with open('/tmp/debug_out_v','w') as fp:
+      fp.write("enableDsu:%d, openpilotLongitudinalControl:%d" % (int(self.CP.enableDsu), int(self.CP.openpilotLongitudinalControl)))
+
     return new_actuators, can_sends
