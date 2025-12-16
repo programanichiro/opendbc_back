@@ -5,7 +5,7 @@ from opendbc.car.toyota.carstate import CarState
 from opendbc.car.toyota.carcontroller import CarController
 from opendbc.car.toyota.radar_interface import RadarInterface
 from opendbc.car.toyota.values import Ecu, CAR, DBC, ToyotaFlags, CarControllerParams, TSS2_CAR, RADAR_ACC_CAR, NO_DSU_CAR, \
-                                                  MIN_ACC_SPEED, EPS_SCALE, NO_STOP_TIMER_CAR, ANGLE_CONTROL_CAR, \
+                                                  MIN_ACC_SPEED, EPS_SCALE, UNSUPPORTED_DSU_CAR, NO_STOP_TIMER_CAR, ANGLE_CONTROL_CAR, \
                                                   ToyotaSafetyFlags
 from opendbc.car.disable_ecu import disable_ecu
 from opendbc.car.interfaces import CarInterfaceBase
@@ -72,6 +72,8 @@ class CarInterface(CarInterfaceBase):
 
     # In TSS2 cars, the camera does long control
     found_ecus = [fw.ecu for fw in car_fw]
+    ret.enableDsu = len(found_ecus) > 0 and Ecu.dsu not in found_ecus and candidate not in (NO_DSU_CAR | UNSUPPORTED_DSU_CAR) \
+                                        and not (ret.flags & ToyotaFlags.SMART_DSU) and not (ret.flags & ToyotaFlags.DSU_BYPASS.value)
 
     if (Ecu.hybrid in found_ecus) or Params().get_bool("ForceHybridVehicle") == True:
       ret.flags |= ToyotaFlags.HYBRID.value
@@ -121,10 +123,14 @@ class CarInterface(CarInterfaceBase):
           break
 
     elif candidate in (CAR.TOYOTA_CHR, CAR.TOYOTA_CAMRY, CAR.TOYOTA_SIENNA, CAR.LEXUS_CTH, CAR.LEXUS_NX):
-      # TODO: Some of these platforms are not advertised to have full range ACC, do they really all have sng?
+      # TODO: Some of these platforms are not advertised to have full range ACC, are they similar to SNG_WITHOUT_DSU cars?
       stop_and_go = True
 
-    stop_and_go = stop_and_go or bool(ret.flags & ToyotaFlags.SMART_DSU.value) or bool(ret.flags & ToyotaFlags.DSU_BYPASS.value)
+    # TODO: these models can do stop and go, but unclear if it requires sDSU or unplugging DSU.
+    #  For now, don't list stop and go functionality in the docs
+    if ret.flags & ToyotaFlags.SNG_WITHOUT_DSU:
+      stop_and_go = stop_and_go or bool(ret.flags & ToyotaFlags.SMART_DSU.value) or bool(ret.flags & ToyotaFlags.DSU_BYPASS.value) or (ret.enableDsu and not docs)
+
     ret.centerToFront = ret.wheelbase * 0.44
 
     # TODO: Some TSS-P platforms have BSM, but are flipped based on region or driving direction.
@@ -156,7 +162,7 @@ class CarInterface(CarInterfaceBase):
     #  - TSS-P DSU-less cars w/ CAN filter installed (no radar parser yet)
     #  - TSS2 radar ACC cars (disables radar)
 
-    ret.openpilotLongitudinalControl = use_sdsu or \
+    ret.openpilotLongitudinalControl = use_sdsu or ret.enableDsu or \
       candidate in (TSS2_CAR - RADAR_ACC_CAR) or \
       bool(ret.flags & ToyotaFlags.DISABLE_RADAR.value) or \
       bool(ret.flags & ToyotaFlags.DSU_BYPASS.value)
