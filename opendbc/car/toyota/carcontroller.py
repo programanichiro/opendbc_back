@@ -10,9 +10,7 @@ from opendbc.car.common.pid import PIDController
 from opendbc.car.secoc import add_mac, build_sync_mac
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.toyota import toyotacan
-from opendbc.car.toyota.values import CAR, NO_STOP_TIMER_CAR, TSS2_CAR, \
-                                        CarControllerParams, ToyotaFlags, \
-                                        UNSUPPORTED_DSU_CAR
+from opendbc.car.toyota.values import CAR, TSS2_CAR, UNSUPPORTED_DSU_CAR, CarControllerParams, ToyotaFlags
 from opendbc.can import CANPacker
 
 Ecu = structs.CarParams.Ecu
@@ -65,7 +63,6 @@ class CarController(CarControllerBase):
     self.last_torque = 0
     self.last_angle = 0
     self.alert_active = False
-    self.last_standstill = False
     self.standstill_req = False
     self.permit_braking = True
     self.steer_rate_counter = 0
@@ -104,6 +101,7 @@ class CarController(CarControllerBase):
     self.new_torques = []
     self.accel_engage_counter = 0
     self.lane_return_power = 100
+    self.last_standstill = False
 
   def update(self, CC, CS, now_nanos):
     actuators = CC.actuators
@@ -235,17 +233,20 @@ class CarController(CarControllerBase):
         self.secoc_lta_message_counter += 1
         can_sends.append(lta_steer_2)
 
-    # *** gas and brake ***
+    # handle UI messages
+    fcw_alert = hud_control.visualAlert == VisualAlert.fcw
+    steer_alert = hud_control.visualAlert in (VisualAlert.steerRequired, VisualAlert.ldw)
+    lead = hud_control.leadVisible or CS.out.vEgo < 12.  # at low speed we always assume the lead is present so ACC can be engaged
 
     # on entering standstill, send standstill request for older TSS-P cars that aren't designed to stay engaged at a stop
-    if self.CP.carFingerprint not in NO_STOP_TIMER_CAR:
+    if (self.CP.flags & ToyotaFlags.SMART_DSU.value or self.CP.flags & ToyotaFlags.DSU_BYPASS.value):
       if CS.out.standstill and not self.CP.openpilotLongitudinalControl and not self.last_standstill:
         self.standstill_req = True
       if CS.pcm_acc_status != 8:
         # pcm entered standstill or it's disabled
         self.standstill_req = False
 
-    else:
+    if not (self.CP.flags & ToyotaFlags.SMART_DSU.value or self.CP.flags & ToyotaFlags.DSU_BYPASS.value) and self.CP.openpilotLongitudinalControl: #TSS2用か？
       # if user engages at a stop with foot on brake, PCM starts in a special cruise standstill mode. on resume press,
       # brakes can take a while to ramp up causing a lurch forward. prevent resume press until planner wants to move.
       # don't use CC.cruiseControl.resume since it is gated on CS.cruiseState.standstill which goes false for 3s after resume press
@@ -260,11 +261,6 @@ class CarController(CarControllerBase):
 
     self.last_standstill = CS.out.standstill
 
-    # handle UI messages
-    fcw_alert = hud_control.visualAlert == VisualAlert.fcw
-    steer_alert = hud_control.visualAlert in (VisualAlert.steerRequired, VisualAlert.ldw)
-    lead = hud_control.leadVisible or CS.out.vEgo < 12.  # at low speed we always assume the lead is present so ACC can be engaged
-
     if self.lock_speed > 0: #auto door lock , unlock
       gear = CS.out.gearShifter
       if self.now_gear != gear or (CS.out.doorOpen and self.lock_flag == True): #ギアが変わるか、ドアが開くか。
@@ -276,32 +272,16 @@ class CarController(CarControllerBase):
         self.lock_flag = True
       self.now_gear = gear
 
-    # accel_engaged_str = '0'
-    # brake_and_stop = CS.out.brakePressed and CS.out.vEgo <= 0.1/3.6
-    # if (CS.out.gasPressed or brake_and_stop) and CS.out.cruiseState.enabled == False:
-    #   try:
-    #     with open('/dev/shm/accel_engaged.txt','r') as fp: #これも毎度やると遅くなる。踏んだ瞬間だけ取る
-    #       accel_engaged_str = fp.read()
-    #   except Exception as e:
-    #     pass
-
-    # acc_set = False
-    # if CS.out.cruiseState.enabled == False and (CS.out.vEgo * 3.6 > (1 if int(accel_engaged_str) >= 3 else 30) and CS.out.gasPressed or brake_and_stop):
-    #   can_sends.append(toyotacan.create_acc_set_command(self.packer))
-    #   acc_set = True
-
-    # with open('/tmp/debug_out_w','w') as fp:
-    #   fp.write("acc_set:%d,%d,%d" % (acc_set,brake_and_stop,CS.out.cruiseState.enabled))
-
-    # Press distance button until we are at the correct bar length. Only change while enabled to avoid skipping startup popup
-    if self.frame % 6 == 0 and self.CP.openpilotLongitudinalControl:
-      desired_distance = 4 - hud_control.leadDistanceBars
-      if CS.out.cruiseState.enabled and CS.pcm_follow_distance != desired_distance:
-        self.distance_button = not self.distance_button
-      else:
-        self.distance_button = 0
-
     if self.CP.openpilotLongitudinalControl:
+      if self.frame % 3 == 0:
+        # Press distance button until we are at the correct bar length. Only change while enabled to avoid skipping startup popup
+        if self.frame % 6 == 0 and self.CP.openpilotLongitudinalControl:
+          desired_distance = 4 - hud_control.leadDistanceBars
+          if CS.out.cruiseState.enabled and CS.pcm_follow_distance != desired_distance:
+            self.distance_button = not self.distance_button
+          else:
+            self.distance_button = 0
+
       if self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT and self.frame % 3 == 0:
         # internal PCM gas command can get stuck unwinding from negative accel so we apply a generous rate limit
         pcm_accel_cmd = actuators.accel
