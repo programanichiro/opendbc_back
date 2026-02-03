@@ -249,7 +249,7 @@ class CarState(CarStateBase):
       ret.leftBlindspot = (cp.vl["BSM"]["L_ADJACENT"] == 1) or (cp.vl["BSM"]["L_APPROACHING"] == 1)
       ret.rightBlindspot = (cp.vl["BSM"]["R_ADJACENT"] == 1) or (cp.vl["BSM"]["R_APPROACHING"] == 1)
 
-    if self.CP.carFingerprint != CAR.TOYOTA_PRIUS_V and not self.CP.carFingerprint in TSS2_CAR: #TSS2はLKASボタンがうまくいかないので、ボタンで制御して。
+    if self.CP.carFingerprint != CAR.TOYOTA_PRIUS_V:
       self.lkas_hud = copy.copy(cp_cam.vl["LKAS_HUD"])
       self.lkas_enabled = cp_cam.vl["LKAS_HUD"]["LKAS_STATUS"]
       if self.prev_lkas_enabled is None:
@@ -267,12 +267,14 @@ class CarState(CarStateBase):
       #   fp.write("lkas_enabled:%d,%d,<%d,%d>" % (self.lkas_enabled,self.prev_lkas_enabled,steer_always,ret.cruiseState.available))
       with open('/dev/shm/cruise_available.txt','w') as fp:
         fp.write('%d' % (ret.cruiseState.available and ret.gearShifter != structs.CarState.GearShifter.reverse)) #念の為バック時にはfalse
-      if not self.prev_lkas_enabled and self.lkas_enabled and steer_always == 0:# and ret.cruiseState.available:
+
+      #TSS2はLKASボタンがうまくいかないので、ボタンで制御して。
+      if not self.prev_lkas_enabled and self.lkas_enabled and steer_always == 0 and not self.CP.carFingerprint in TSS2_CAR:# and ret.cruiseState.available:
         with open('/dev/shm/steer_always.txt','w') as fp:
          fp.write('%d' % 1)
         # with open('/data/steer_always.txt','w') as fp:
         #  fp.write('%d' % 1)
-      elif (self.prev_lkas_enabled and not self.lkas_enabled and steer_always != 0):# or not ret.cruiseState.available:
+      elif (self.prev_lkas_enabled and not self.lkas_enabled and steer_always != 0) and not self.CP.carFingerprint in TSS2_CAR:# or not ret.cruiseState.available:
         with open('/dev/shm/steer_always.txt','w') as fp:
          fp.write('%d' % 0)
         # with open('/data/steer_always.txt','w') as fp:
