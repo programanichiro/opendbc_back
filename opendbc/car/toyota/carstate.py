@@ -249,7 +249,7 @@ class CarState(CarStateBase):
       ret.leftBlindspot = (cp.vl["BSM"]["L_ADJACENT"] == 1) or (cp.vl["BSM"]["L_APPROACHING"] == 1)
       ret.rightBlindspot = (cp.vl["BSM"]["R_ADJACENT"] == 1) or (cp.vl["BSM"]["R_APPROACHING"] == 1)
 
-    if self.CP.carFingerprint != CAR.TOYOTA_PRIUS_V:
+    if self.CP.carFingerprint != CAR.TOYOTA_PRIUS_V and not self.CP.carFingerprint in TSS2_CAR: #TSS2はLKASボタンがうまくいかないので、ボタンで制御して。
       self.lkas_hud = copy.copy(cp_cam.vl["LKAS_HUD"])
       self.lkas_enabled = cp_cam.vl["LKAS_HUD"]["LKAS_STATUS"]
       if self.prev_lkas_enabled is None:
@@ -293,14 +293,14 @@ class CarState(CarStateBase):
     buttonEvents = []
     if self.CP.carFingerprint in TSS2_CAR or (self.CP.flags & ToyotaFlags.SMART_DSU) or (self.CP.flags & ToyotaFlags.DSU_BYPASS):
       #MADSが勝手にOFFになるのは「 after ~3s」の現象？どこかで戻してる？
-      # # lkas button is wired to the camera
-      # prev_lkas_button = self.lkas_button
-      # self.lkas_button = cp_cam.vl["LKAS_HUD"]["LDA_ON_MESSAGE"]
+      # lkas button is wired to the camera
+      prev_lkas_button = self.lkas_button
+      self.lkas_button = cp_cam.vl["LKAS_HUD"]["LDA_ON_MESSAGE"]
 
-      # # Cycles between 1 and 2 when pressing the button, then rests back at 0 after ~3s
-      # if self.lkas_button != 0 and self.lkas_button != prev_lkas_button:
-      #   buttonEvents.extend(create_button_events(1, 0, {1: ButtonType.lkas}) +
-      #                       create_button_events(0, 1, {1: ButtonType.lkas}))
+      # Cycles between 1 and 2 when pressing the button, then rests back at 0 after ~3s
+      if self.lkas_button != 0 and self.lkas_button != prev_lkas_button:
+        buttonEvents.extend(create_button_events(1, 0, {1: ButtonType.lkas}) +
+                            create_button_events(0, 1, {1: ButtonType.lkas}))
 
       if self.CP.carFingerprint not in (RADAR_ACC_CAR | SECOC_CAR):
         # distance button is wired to the ACC module (camera or radar)
