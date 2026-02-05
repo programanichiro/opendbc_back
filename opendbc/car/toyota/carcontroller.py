@@ -40,13 +40,8 @@ COMPENSATORY_CALCULATION_THRESHOLD_BP = [0., 20., 32.]  # m/s
 
 def get_long_tune(CP, params):
   if CP.carFingerprint in TSS2_CAR:
-    if CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
-      kiBP = [2., 5.]
-      kiV = [0.5, 0.25]
-    else:
-      # cydia method
-      kiBP = [0.]
-      kiV = [1.2]
+    kiBP = [2., 5.]
+    kiV = [0.5, 0.25]
   else:
     if CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
       kiBP = [0., 5., 35.]
