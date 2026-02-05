@@ -43,8 +43,8 @@ def get_long_tune(CP, params):
     # kiBP = [2., 5.]
     # kiV = [0.5, 0.25]
     # 低速域でI項を強くして減速要求が抜けないようにする
-    kiBP = [0., 2., 5.]
-    kiV  = [1.2, 0.8, 0.5]
+    kiBP = [0., 1., 2., 5.]
+    kiV  = [1.8, 1.2, 0.8, 0.5]
   else:
     if CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
       kiBP = [0., 5., 35.]

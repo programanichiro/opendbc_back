@@ -157,8 +157,8 @@ class CarInterface(CarInterfaceBase):
     if candidate in TSS2_CAR:
       # ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value #イチロウパイロットでは選択制にしたい
 
-      ret.vEgoStopping = 0.25
-      ret.vEgoStarting = 0.25
+      ret.vEgoStopping = 0.5 #0.25
+      ret.vEgoStarting = 0.5 #0.25
       ret.stoppingDecelRate = 0.3  # reach stopping target smoothly
 
       # Hybrids have much quicker longitudinal actuator response
