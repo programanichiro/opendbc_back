@@ -40,11 +40,13 @@ COMPENSATORY_CALCULATION_THRESHOLD_BP = [0., 20., 32.]  # m/s
 
 def get_long_tune(CP, params):
   if CP.carFingerprint in TSS2_CAR:
-    # kiBP = [2., 5.]
-    # kiV = [0.5, 0.25]
-    # 低速域でI項を強くして減速要求が抜けないようにする
-    kiBP = [0., 1., 2., 5.]
-    kiV  = [1.8, 1.2, 0.8, 0.5]
+    if CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
+      kiBP = [2., 5.]
+      kiV = [0.5, 0.25]
+    else: # 低速域でI項を強くして減速要求が抜けないようにする
+      #ichiro pilot
+      kiBP = [0., 1., 2., 5.]
+      kiV  = [1.8, 1.2, 0.8, 0.5]
   else:
     if CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
       kiBP = [0., 5., 35.]
