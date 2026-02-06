@@ -272,13 +272,13 @@ class CarState(CarStateBase):
       if not self.prev_lkas_enabled and self.lkas_enabled and steer_always == 0 and not self.CP.carFingerprint in TSS2_CAR:# and ret.cruiseState.available:
         with open('/dev/shm/steer_always.txt','w') as fp:
          fp.write('%d' % 1)
-        # with open('/data/steer_always.txt','w') as fp:
-        #  fp.write('%d' % 1)
+        with open('/data/steer_always.txt','w') as fp:
+         fp.write('%d' % 1)
       elif (self.prev_lkas_enabled and not self.lkas_enabled and steer_always != 0) and not self.CP.carFingerprint in TSS2_CAR:# or not ret.cruiseState.available:
         with open('/dev/shm/steer_always.txt','w') as fp:
          fp.write('%d' % 0)
-        # with open('/data/steer_always.txt','w') as fp:
-        #  fp.write('%d' % 0)
+        with open('/data/steer_always.txt','w') as fp:
+         fp.write('%d' % 0)
       self.prev_lkas_enabled = self.lkas_enabled
 
     # if self.pcm_follow_distance != cp.vl["PCM_CRUISE_2"]['PCM_FOLLOW_DISTANCE']:
