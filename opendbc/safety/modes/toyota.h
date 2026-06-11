@@ -372,7 +372,7 @@ static bool toyota_tx_hook(const CANPacket_t *msg) {
     bool invalid_door_lock_msg = (GET_BYTES(msg, 0, 4) != 0x11300540U) || (GET_BYTES(msg, 4, 4) != 0x00004000U);
     bool invalid_door_unlock_msg = (GET_BYTES(msg, 0, 4) != 0x11300540U) || (GET_BYTES(msg, 4, 4) != 0x00008000U);
     if (invalid_uds_msg && invalid_door_lock_msg && invalid_door_unlock_msg) {
-      tx = 0;
+      tx = false;
     }
   }
 
