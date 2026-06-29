@@ -98,11 +98,10 @@ def fingerprint(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_mu
       fixed_fingerprint_str = fp.read()
       if fixed_fingerprint_str:
         fixed_fingerprint = MIGRATION.get(fixed_fingerprint_str)
-        skip_fw_query = True
+        #skip_fw_query = True
+        disable_fw_cache = True #キャッシュなしで検証
   except Exception as e:
     pass
-
-  disable_fw_cache = True #キャッシュなしで検証
 
   if not skip_fw_query:
     if cached_params is not None and cached_params.brand != "mock" and len(cached_params.carFw) > 0 and \
@@ -155,7 +154,7 @@ def fingerprint(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_mu
   source = CarParams.FingerprintSource.can
 
   # If FW query returns exactly 1 candidate, use it
-  if len(fw_candidates) == 1:
+  if len(fw_candidates) == 1 and not fixed_fingerprint:
     car_fingerprint = list(fw_candidates)[0]
     source = CarParams.FingerprintSource.fw
     exact_match = exact_fw_match
@@ -165,6 +164,8 @@ def fingerprint(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_mu
   if fixed_fingerprint:
     car_fingerprint = fixed_fingerprint
     source = CarParams.FingerprintSource.fixed
+    print(f"car_fingerprint#:{car_fingerprint}")
+    print(f"exact_match#:{exact_match}")
 
   carlog.error({"event": "fingerprinted", "car_fingerprint": str(car_fingerprint), "source": source, "fuzzy": not exact_match,
                 "cached": cached, "fw_count": len(car_fw), "ecu_responses": list(ecu_rx_addrs), "vin_rx_addr": vin_rx_addr,
