@@ -85,13 +85,6 @@ def can_fingerprint(can_recv: CanRecvCallable) -> tuple[str | None, dict[int, di
 def fingerprint(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_multiplexing: ObdCallback,
                 cached_params: CarParamsT | None) -> tuple[str | None, dict, str, list[CarParams.CarFw], CarParams.FingerprintSource, bool]:
   fixed_fingerprint = os.environ.get('FINGERPRINT', "")
-  try:
-    with open('/data/fixed_fingerprint.txt','r') as fp:
-      fixed_fingerprint_str = fp.read()
-      if fixed_fingerprint_str:
-        fixed_fingerprint = fixed_fingerprint_str
-  except Exception as e:
-    pass
   skip_fw_query = os.environ.get('SKIP_FW_QUERY', False)
   disable_fw_cache = os.environ.get('DISABLE_FW_CACHE', False)
   ecu_rx_addrs = set()
@@ -99,6 +92,14 @@ def fingerprint(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_mu
   start_time = time.monotonic()
   Params().put_bool('DisengageOnAccelerator',False) #アクセル解除ボタン強制OFF
   Params().put_bool('IsMetric',True) #km/hを使う。イチロウパイロットはmphの車で多分うまく動かない
+  try:
+    with open('/data/fixed_fingerprint.txt','r') as fp:
+      fixed_fingerprint_str = fp.read()
+      if fixed_fingerprint_str:
+        fixed_fingerprint = fixed_fingerprint_str
+        skip_fw_query = True
+  except Exception as e:
+    pass
 
   if not skip_fw_query:
     if cached_params is not None and cached_params.brand != "mock" and len(cached_params.carFw) > 0 and \
