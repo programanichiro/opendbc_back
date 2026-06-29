@@ -98,8 +98,8 @@ def fingerprint(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_mu
       fixed_fingerprint_str = fp.read()
       if fixed_fingerprint_str:
         fixed_fingerprint = MIGRATION.get(fixed_fingerprint_str)
-        #skip_fw_query = True
-        disable_fw_cache = True #キャッシュなしで検証
+        #skip_fw_query = True #直指定でもfw読み出し(car_fw, vin)は必要。
+        #disable_fw_cache = True #キャッシュなしで検証
   except Exception as e:
     pass
 
@@ -121,14 +121,7 @@ def fingerprint(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_mu
       car_fw = get_fw_versions_ordered(can_recv, can_send, set_obd_multiplexing, vin, ecu_rx_addrs)
       cached = False
 
-      print(f"vin_rx_addr:{vin_rx_addr}")
-      print(f"vin_rx_bus:{vin_rx_bus}")
-      print(f"car_fw:{car_fw}")
-
-    exact_fw_match, fw_candidates = match_fw_to_car(car_fw, vin)
-
-    print(f"exact_fw_match:{exact_fw_match}")
-    print(f"fw_candidates:{fw_candidates}")
+    exact_fw_match, fw_candidates = match_fw_to_car(car_fw, vin) if not fixed_fingerprint else (False,[])
   else:
     vin_rx_addr, vin_rx_bus, vin = -1, -1, VIN_UNKNOWN
     exact_fw_match, fw_candidates, car_fw = True, set(), []
@@ -148,24 +141,19 @@ def fingerprint(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_mu
   # drain CAN socket so we get the latest messages
   can_recv()
   car_fingerprint, finger = can_fingerprint(can_recv)
-  print(f"finger:{finger}")
 
   exact_match = True
   source = CarParams.FingerprintSource.can
 
   # If FW query returns exactly 1 candidate, use it
-  if len(fw_candidates) == 1 and not fixed_fingerprint:
+  if len(fw_candidates) == 1:
     car_fingerprint = list(fw_candidates)[0]
     source = CarParams.FingerprintSource.fw
     exact_match = exact_fw_match
-    print(f"car_fingerprint:{car_fingerprint}")
-    print(f"exact_match:{exact_match}")
 
   if fixed_fingerprint:
     car_fingerprint = fixed_fingerprint
     source = CarParams.FingerprintSource.fixed
-    print(f"car_fingerprint#:{car_fingerprint}")
-    print(f"exact_match#:{exact_match}")
 
   carlog.error({"event": "fingerprinted", "car_fingerprint": str(car_fingerprint), "source": source, "fuzzy": not exact_match,
                 "cached": cached, "fw_count": len(car_fw), "ecu_responses": list(ecu_rx_addrs), "vin_rx_addr": vin_rx_addr,
