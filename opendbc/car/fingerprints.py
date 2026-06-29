@@ -10,6 +10,7 @@ from opendbc.car.mock.values import CAR as MOCK
 from opendbc.car.nissan.values import CAR as NISSAN
 from opendbc.car.rivian.values import CAR as RIVIAN
 from opendbc.car.subaru.values import CAR as SUBARU
+from opendbc.car.tesla.values import CAR as TESLA
 from opendbc.car.toyota.values import CAR as TOYOTA
 from opendbc.car.volkswagen.values import CAR as VW
 
@@ -338,6 +339,13 @@ MIGRATION = {
   "RIVIAN_R1_GEN2": RIVIAN.RIVIAN_R1,
 
   "mock": MOCK.MOCK,
+
+  "RIVIAN R1 GEN1": RIVIAN.RIVIAN_R1,
+  "RIVIAN R1 GEN2": RIVIAN.RIVIAN_R1,
+
+  "TESLA MODEL 3": TESLA.TESLA_MODEL_3,
+  "TESLA MODEL X": TESLA.TESLA_MODEL_X,
+  "TESLA MODEL Y": TESLA.TESLA_MODEL_Y,
 }
 
 def getCarBrandStrs(MIGRATION, level, p0=None, p1=None):
