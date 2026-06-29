@@ -11,6 +11,7 @@ from opendbc.car.fw_versions import ObdCallback, get_fw_versions_ordered, get_pr
 from opendbc.car.mock.values import CAR as MOCK
 from opendbc.car.values import BRANDS
 from opendbc.car.vin import get_vin, is_valid_vin, VIN_UNKNOWN
+from opendbc.car.fingerprints import MIGRATION
 
 FRAME_FINGERPRINT = 100  # 1s
 
@@ -96,7 +97,7 @@ def fingerprint(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_mu
     with open('/data/fixed_fingerprint.txt','r') as fp:
       fixed_fingerprint_str = fp.read()
       if fixed_fingerprint_str:
-        fixed_fingerprint = fixed_fingerprint_str
+        fixed_fingerprint = MIGRATION.get(fixed_fingerprint_str)
         skip_fw_query = True
   except Exception as e:
     pass
