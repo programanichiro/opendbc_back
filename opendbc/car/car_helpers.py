@@ -101,6 +101,8 @@ def fingerprint(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_mu
   except Exception as e:
     pass
 
+  disable_fw_cache = True #キャッシュなしで検証
+
   if not skip_fw_query:
     if cached_params is not None and cached_params.brand != "mock" and len(cached_params.carFw) > 0 and \
        cached_params.carVin is not VIN_UNKNOWN and not disable_fw_cache:
@@ -119,7 +121,14 @@ def fingerprint(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_mu
       car_fw = get_fw_versions_ordered(can_recv, can_send, set_obd_multiplexing, vin, ecu_rx_addrs)
       cached = False
 
+      print(f"vin_rx_addr:{vin_rx_addr}")
+      print(f"vin_rx_bus:{vin_rx_bus}")
+      print(f"car_fw:{car_fw}")
+
     exact_fw_match, fw_candidates = match_fw_to_car(car_fw, vin)
+
+    print(f"exact_fw_match:{exact_fw_match}")
+    print(f"fw_candidates:{fw_candidates}")
   else:
     vin_rx_addr, vin_rx_bus, vin = -1, -1, VIN_UNKNOWN
     exact_fw_match, fw_candidates, car_fw = True, set(), []
@@ -139,6 +148,7 @@ def fingerprint(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_mu
   # drain CAN socket so we get the latest messages
   can_recv()
   car_fingerprint, finger = can_fingerprint(can_recv)
+  print(f"finger:{finger}")
 
   exact_match = True
   source = CarParams.FingerprintSource.can
@@ -148,6 +158,8 @@ def fingerprint(can_recv: CanRecvCallable, can_send: CanSendCallable, set_obd_mu
     car_fingerprint = list(fw_candidates)[0]
     source = CarParams.FingerprintSource.fw
     exact_match = exact_fw_match
+    print(f"car_fingerprint:{car_fingerprint}")
+    print(f"exact_match:{exact_match}")
 
   if fixed_fingerprint:
     car_fingerprint = fixed_fingerprint
