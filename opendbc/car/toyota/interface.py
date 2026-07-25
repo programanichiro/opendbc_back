@@ -94,6 +94,9 @@ class CarInterface(CarInterfaceBase):
         elif fw.ecu == "eps" and eps_tss2_tssp:
           ret.flags |= ToyotaFlags.POWER_STEERING_TSS2.value
           ret.steerRatio = 13.4 #TSS2相当に。様子見。
+        # 2021+ TSS2 steering rack swapped into a TSS-P car, not supported
+        # if fw.ecu == "eps" and fw.fwVersion == b'8965B47070\x00\x00\x00\x00\x00\x00':
+        #   ret.dashcamOnly = True #ついに47700への換装は非サポート。
 
     elif candidate in (CAR.LEXUS_RX, CAR.LEXUS_RX_TSS2):
       stop_and_go = True
