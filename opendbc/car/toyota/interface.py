@@ -4,8 +4,8 @@ from opendbc.can.packer import CANPacker
 from opendbc.car.toyota.carstate import CarState
 from opendbc.car.toyota.carcontroller import CarController
 from opendbc.car.toyota.radar_interface import RadarInterface
-from opendbc.car.toyota.values import Ecu, CAR, DBC, ToyotaFlags, CarControllerParams, TSS2_CAR, RADAR_ACC_CAR, MIN_ACC_SPEED, \
-                                                  EPS_SCALE, ANGLE_CONTROL_CAR, ToyotaSafetyFlags
+from opendbc.car.toyota.values import Ecu, CAR, DBC, ToyotaFlags, CarControllerParams, MIN_ACC_SPEED, \
+                                                  EPS_SCALE, ToyotaSafetyFlags
 from opendbc.car.disable_ecu import disable_ecu
 from opendbc.car.interfaces import CarInterfaceBase
 from openpilot.common.params import Params
@@ -40,7 +40,7 @@ class CarInterface(CarInterfaceBase):
       ret.safetyConfigs[0].safetyParam |= ToyotaSafetyFlags.SECOC.value
       ret.dashcamOnly = is_release
 
-    if candidate in ANGLE_CONTROL_CAR:
+    if ret.flags & ToyotaFlags.ANGLE_CONTROL:
       ret.steerControlType = SteerControlType.angle
       ret.safetyConfigs[0].safetyParam |= ToyotaSafetyFlags.LTA.value
 
@@ -53,8 +53,8 @@ class CarInterface(CarInterfaceBase):
       ret.steerActuatorDelay = 0.12  # Default delay, Prius has larger delay
       ret.steerLimitTimer = 0.4
 
-    stop_and_go = candidate in TSS2_CAR
-    if candidate in TSS2_CAR:
+    stop_and_go = bool(ret.flags & ToyotaFlags.TSS2)
+    if ret.flags & ToyotaFlags.TSS2:
       ret.flags |= ToyotaFlags.POWER_STEERING_TSS2.value #パワステモーターTSS2
 
     # Detect smartDSU, which intercepts ACC_CMD from the DSU (or radar) allowing openpilot to send it
@@ -63,7 +63,7 @@ class CarInterface(CarInterfaceBase):
       ret.flags |= ToyotaFlags.SMART_DSU.value
 
     # Detect 0x343 on bus 2, if detected on bus 2 and is not TSS 2, it means DSU is bypassed
-    if not (ret.flags & ToyotaFlags.SMART_DSU) and 0x343 in fingerprint[2] and candidate not in TSS2_CAR:
+    if not (ret.flags & ToyotaFlags.SMART_DSU) and 0x343 in fingerprint[2] and ret.flags & ToyotaFlags.TSS2:
       #SMART_DSUと共存できない。
       if Params().get_bool("IgnoreRerouteHarness") == False: #リルートハーネス装着の区別ができないので、機能にスイッチをつけた。
         ret.flags |= ToyotaFlags.DSU_BYPASS.value
@@ -116,14 +116,14 @@ class CarInterface(CarInterfaceBase):
 
     # TODO: Some TSS-P platforms have BSM, but are flipped based on region or driving direction.
     # Detect flipped signals and enable for C-HR and others
-    ret.enableBsm = 0x3F6 in fingerprint[0] and candidate in TSS2_CAR
+    ret.enableBsm = 0x3F6 in fingerprint[0] and bool(ret.flags & ToyotaFlags.TSS2)
 
     ret.radarUnavailable = Bus.radar not in DBC[candidate]
 
     # if the smartDSU is detected, openpilot can send ACC_CONTROL and the smartDSU will block it from the DSU or radar.
     use_sdsu = bool(ret.flags & ToyotaFlags.SMART_DSU)
     # since we don't yet parse radar on TSS2 radar-based ACC cars, gate longitudinal behind alpha toggle
-    if candidate in RADAR_ACC_CAR:
+    if ret.flags & ToyotaFlags.RADAR_ACC:
       ret.alphaLongitudinalAvailable = True
 
       if not use_sdsu:
@@ -139,10 +139,9 @@ class CarInterface(CarInterfaceBase):
     # openpilot longitudinal behind experimental long toggle:
     #  - TSS-P DSU-less cars w/ CAN filter installed (no radar parser yet)
 
-    ret.openpilotLongitudinalControl = use_sdsu or \
-      candidate in (TSS2_CAR - RADAR_ACC_CAR) or \
-      bool(ret.flags & ToyotaFlags.DISABLE_RADAR.value) or \
-      bool(ret.flags & ToyotaFlags.DSU_BYPASS.value)
+    ret.openpilotLongitudinalControl = ((bool(ret.flags & ToyotaFlags.TSS2) and not (ret.flags & ToyotaFlags.RADAR_ACC)) or
+                                        bool(ret.flags & ToyotaFlags.DISABLE_RADAR.value) or
+                                        bool(ret.flags & ToyotaFlags.DSU_BYPASS.value) or use_sdsu)
 
     ret.autoResumeSng = ret.openpilotLongitudinalControl
 
@@ -156,7 +155,7 @@ class CarInterface(CarInterfaceBase):
     # on stock Toyota this is -2.5
     ret.stopAccel = -2.5
 
-    if candidate in TSS2_CAR:
+    if ret.flags & ToyotaFlags.TSS2:
       # ret.flags |= ToyotaFlags.RAISED_ACCEL_LIMIT.value #イチロウパイロットでは選択制にしたい
 
       # Hybrids have much quicker longitudinal actuator response

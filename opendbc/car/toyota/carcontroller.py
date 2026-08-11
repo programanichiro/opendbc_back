@@ -10,7 +10,7 @@ from opendbc.car.common.pid import PIDController
 from opendbc.car.secoc import add_mac, build_sync_mac
 from opendbc.car.interfaces import CarControllerBase
 from opendbc.car.toyota import toyotacan
-from opendbc.car.toyota.values import CAR, TSS2_CAR, UNSUPPORTED_DSU_CAR, CarControllerParams, ToyotaFlags
+from opendbc.car.toyota.values import CAR, CarControllerParams, ToyotaFlags
 from opendbc.can import CANPacker
 
 Ecu = structs.CarParams.Ecu
@@ -39,7 +39,7 @@ COMPENSATORY_CALCULATION_THRESHOLD_V = [-0.2, -0.2, -0.05]  # m/s^2
 COMPENSATORY_CALCULATION_THRESHOLD_BP = [0., 20., 32.]  # m/s
 
 def get_long_tune(CP, params):
-  if CP.carFingerprint in TSS2_CAR:
+  if CP.flags & ToyotaFlags.TSS2:
     if CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
       kiBP = [2., 5.]
       kiV = [0.5, 0.25]
@@ -138,7 +138,7 @@ class CarController(CarControllerBase):
 
     # *** steer torque ***
     new_torque = int(round(actuators.torque * self.params.STEER_MAX))
-    if (self.CP.carFingerprint not in TSS2_CAR) and (CS.knight_scanner_bit3 & 0x02): # knight_scanner_bit3.txt ⚪︎⚫︎⚪︎
+    if (not self.CP.flags & ToyotaFlags.TSS2) and (CS.knight_scanner_bit3 & 0x02): # knight_scanner_bit3.txt ⚪︎⚫︎⚪︎
       if abs(self.before_ang - CS.out.steeringAngleDeg) > 3.0/100: #1秒で3度以上
         # ハンドルが大きく動いたら
         self.before_ang_ct *= 0.9
@@ -218,7 +218,7 @@ class CarController(CarControllerBase):
     can_sends.append(steer_command)
 
     # STEERING_LTA does not seem to allow more rate by sending faster, and may wind up easier
-    if self.frame % 2 == 0 and self.CP.carFingerprint in TSS2_CAR:
+    if self.frame % 2 == 0 and self.CP.flags & ToyotaFlags.TSS2:
       lta_active = lat_active and self.CP.steerControlType == SteerControlType.angle
       # cut steering torque with TORQUE_WIND_DOWN when either EPS torque or driver torque is above
       # the threshold, to limit max lateral acceleration and for driver torque blending respectively.
@@ -469,7 +469,7 @@ class CarController(CarControllerBase):
     else:
       # we can spam can to cancel the system even if we are using lat only control
       if pcm_cancel_cmd:
-        if self.CP.carFingerprint in UNSUPPORTED_DSU_CAR:
+        if self.CP.flags & ToyotaFlags.UNSUPPORTED_DSU:
           can_sends.append(toyotacan.create_acc_cancel_command(self.packer))
         elif self.CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
           can_sends.append(toyotacan.create_accel_command(self.packer, 0, pcm_cancel_cmd, True, False, lead, CS.acc_type, False, self.distance_button))
