@@ -61,7 +61,7 @@ class ToyotaSafetyFlags(IntFlag):
 class ToyotaFlags(IntFlag):
   # Detected flags
   HYBRID = 1
-  SMART_DSU = 2
+  HAS_BSM = 2  # blind spot monitoring
   DISABLE_RADAR = 4
 
   # Static flags
@@ -84,6 +84,7 @@ class ToyotaFlags(IntFlag):
   SNG_WITHOUT_DSU_DEPRECATED = 512
   # no resume button press required
   NO_STOP_TIMER_DEPRECATED = 256
+  SMART_DSU = 16384
 
 
 def dbc_dict(pt, radar):
