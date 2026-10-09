@@ -25,6 +25,8 @@ class CarState(CarStateBase):
 
     self.hands_on_level = 0
     self.das_control = None
+
+    self.prev_hazard = -1
     self.brake_state = False
 
   def update_autopark_state(self, autopark_state: str, cruise_enabled: bool):
@@ -114,6 +116,12 @@ class CarState(CarStateBase):
         ret.rightBlinker = cp_vehicle.vl["VCFRONT_lighting"]["VCFRONT_indicatorRightRequest"] != 0
         if not HW4_GEN2_IGNORE_SEATBELT:
           ret.seatbeltUnlatched = cp_vehicle.vl["SeatBeltStatus"]["driverBuckleStatus"] != 1
+
+        hazard = cp_vehicle.vl["VCFRONT_lighting"]["VCFRONT_hazardLightRequest"] != 0
+        if self.prev_hazard != hazard:
+          self.prev_hazard = hazard
+          with open('/tmp/hazard_light.txt','w') as fp:
+            fp.write("%d" % (hazard))
     else:
       # Doors
       ret.doorOpen = cp_party.vl["UI_warning"]["anyDoorOpen"] == 1
