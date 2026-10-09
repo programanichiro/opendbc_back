@@ -30,7 +30,8 @@ class CarState(CarStateBase):
     self.brake_state = False
 
   def update_autopark_state(self, autopark_state: str, cruise_enabled: bool):
-    autopark_now = autopark_state in ("ACTIVE", "COMPLETE", "SELFPARK_STARTED")
+    # STARTED を含めないと safety 側(tesla.h)と判定がずれる
+    autopark_now = autopark_state in ("STARTED", "ACTIVE", "COMPLETE", "SELFPARK_STARTED")
     if autopark_now and not self.autopark_prev and not self.cruise_enabled_prev:
       self.autopark = True
     if not autopark_now:

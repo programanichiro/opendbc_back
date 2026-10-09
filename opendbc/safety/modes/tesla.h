@@ -150,7 +150,10 @@ static void tesla_rx_hook(const CANPacket_t *msg) {
   if (msg_matches(msg, 0x286U, 0U)) {
     // Autopark state
     int autopark_state = (msg->data[3] >> 1) & 0x0FU;  // DI_autoparkState
-    bool tesla_autopark_now = (autopark_state == 3) ||  // ACTIVE
+    // STARTED を見ないと、駐車を開始した時点で APS_eacMonitor(0x27D) を遮断したままになり、
+    // ACTIVE へ進む前に純正の自動駐車が中止される
+    bool tesla_autopark_now = (autopark_state == 2) ||  // STARTED
+                              (autopark_state == 3) ||  // ACTIVE
                               (autopark_state == 4) ||  // COMPLETE
                               (autopark_state == 9);    // SELFPARK_STARTED
 
@@ -172,6 +175,10 @@ static void tesla_rx_hook(const CANPacket_t *msg) {
                           (cruise_state == 7);    // PRE_CANCEL
     cruise_engaged = cruise_engaged && !tesla_autopark;
 
+    // MADS: Tesla に ACC メインスイッチは無いので、STANDBY かエンゲージ中を「使える状態」とする
+    acc_main_on = (cruise_state == 1) || cruise_engaged;   // 1 = STANDBY
+    lateral_controls_allowed = acc_main_on;
+    
     pcm_cruise_check(cruise_engaged);
   }
 
