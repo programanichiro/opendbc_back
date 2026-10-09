@@ -100,6 +100,9 @@ class CarState(CarStateBase):
     # Gear
     ret.gearShifter = GEAR_MAP[self.can_define.dv["DI_systemStatus"]["DI_gear"].get(int(cp_party.vl["DI_systemStatus"]["DI_gear"]), "DI_GEAR_INVALID")]
 
+    with open('/dev/shm/cruise_available.txt','w') as fp:
+      fp.write('%d' % (ret.cruiseState.available and ret.gearShifter != structs.CarState.GearShifter.reverse)) #念の為バック時にはfalse
+
     # HW4 gen2 doesn't send UI_warning, and moved DAS_status from 0x39b to 0x399
     if self.CP.flags & TeslaFlags.HW4_GEN2:
       # Doors
