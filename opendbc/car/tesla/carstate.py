@@ -25,6 +25,7 @@ class CarState(CarStateBase):
 
     self.hands_on_level = 0
     self.das_control = None
+    self.brake_state = False
 
   def update_autopark_state(self, autopark_state: str, cruise_enabled: bool):
     autopark_now = autopark_state in ("ACTIVE", "COMPLETE", "SELFPARK_STARTED")
@@ -49,6 +50,12 @@ class CarState(CarStateBase):
 
     # Brake pedal
     ret.brakePressed = cp_party.vl["ESP_status"]["ESP_driverBrakeApply"] == 2
+
+    new_brake_state = bool(cp_party.vl["ESP_status"]["ESP_brakeLamp"]) or ret.brakePressed
+    if self.brake_state != new_brake_state:
+      self.brake_state = new_brake_state
+      with open('/dev/shm/brake_light_state.txt','w') as fp:
+        fp.write('%d' % (new_brake_state))
 
     # Steering wheel
     epas_status = cp_party.vl["EPAS3S_sysStatus"]
