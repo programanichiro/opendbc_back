@@ -23,6 +23,8 @@ static bool tesla_stock_aeb = false;
 // TODO: Only LKAS (non-emergency) is currently supported since we've only seen it
 static bool tesla_stock_lkas = false;
 static bool tesla_stock_lkas_prev = false;
+// openpilot が ANGLE_CONTROL を送っているか。MADS 中は controls_allowed が false なので、これで操舵中を判別する
+static bool tesla_op_steering = false;
 
 // Only Summon is currently supported due to Autopark not setting Autopark state properly
 static bool tesla_autopark = false;
@@ -198,7 +200,7 @@ static void tesla_rx_hook(const CANPacket_t *msg) {
     bool tesla_stock_lkas_now = steering_control_type == 2;  // "LANE_KEEP_ASSIST"
 
     // Only consider rising edges while controls are not allowed
-    if (tesla_stock_lkas_now && !tesla_stock_lkas_prev && !controls_allowed) {
+    if (tesla_stock_lkas_now && !tesla_stock_lkas_prev && !controls_allowed && !tesla_op_steering) {
       tesla_stock_lkas = true;
     }
     if (!tesla_stock_lkas_now) {
@@ -258,6 +260,8 @@ static bool tesla_tx_hook(const CANPacket_t *msg) {
       // Don't allow any steering commands when stock LKAS is active
       violation = true;
     }
+
+    tesla_op_steering = steer_control_enabled && !violation;
   }
 
   // DAS_control: longitudinal control message
@@ -355,6 +359,7 @@ static safety_config tesla_init(uint16_t param) {
   tesla_stock_aeb = false;
   tesla_stock_lkas = false;
   tesla_stock_lkas_prev = false;
+  tesla_op_steering = false;
   // we need to assume Autopark/Summon on startup since DI_state is a low freq msg.
   // this is so that we don't fault if starting while these systems are active
   tesla_autopark = true;
