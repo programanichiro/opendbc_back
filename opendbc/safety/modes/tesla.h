@@ -175,8 +175,9 @@ static void tesla_rx_hook(const CANPacket_t *msg) {
     cruise_engaged = cruise_engaged && !tesla_autopark;
 
     // MADS: Tesla に ACC メインスイッチは無いので、STANDBY かエンゲージ中を「使える状態」とする
-    acc_main_on = (cruise_state == 1) || cruise_engaged;   // 1 = STANDBY
-    lateral_controls_allowed = acc_main_on;
+    //acc_main_on = (cruise_state == 1) || cruise_engaged;   // 1 = STANDBY
+    //lateral_controls_allowed = acc_main_on;
+    //MADSの挙動が危ないので、上記しばらく封印
     
     pcm_cruise_check(cruise_engaged);
   }
