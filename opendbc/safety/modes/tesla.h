@@ -152,10 +152,7 @@ static void tesla_rx_hook(const CANPacket_t *msg) {
   if (msg_matches(msg, 0x286U, 0U)) {
     // Autopark state
     int autopark_state = (msg->data[3] >> 1) & 0x0FU;  // DI_autoparkState
-    // STARTED を見ないと、駐車を開始した時点で APS_eacMonitor(0x27D) を遮断したままになり、
-    // ACTIVE へ進む前に純正の自動駐車が中止される
-    bool tesla_autopark_now = (autopark_state == 2) ||  // STARTED
-                              (autopark_state == 3) ||  // ACTIVE
+    bool tesla_autopark_now = (autopark_state == 3) ||  // ACTIVE
                               (autopark_state == 4) ||  // COMPLETE
                               (autopark_state == 9);    // SELFPARK_STARTED
 
