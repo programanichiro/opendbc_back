@@ -34,10 +34,6 @@ MAX_STEER_RATE_FRAMES = 17  # tx control frames needed before torque can be cut
 # EPS allows user torque above threshold for 50 frames before permanently faulting
 MAX_USER_TORQUE = 500
 
-# PCM compensatory force calculation threshold interpolation values
-COMPENSATORY_CALCULATION_THRESHOLD_V = [-0.2, -0.2, -0.05]  # m/s^2
-COMPENSATORY_CALCULATION_THRESHOLD_BP = [0., 20., 32.]  # m/s
-
 def get_long_tune(CP, params):
   if CP.flags & ToyotaFlags.TSS2:
     if CP.flags & ToyotaFlags.RAISED_ACCEL_LIMIT:
@@ -73,7 +69,6 @@ class CarController(CarControllerBase):
     self.standstill_req = False
     self.permit_braking = True
     self.steer_rate_counter = 0
-    self.prohibit_neg_calculation = True
     self.distance_button = 0
 
     # *** start long control state ***
@@ -401,21 +396,11 @@ class CarController(CarControllerBase):
 
         actuators_accel = pcm_accel_cmd
 
-        comp_thresh = float(np.interp(CS.out.vEgo, COMPENSATORY_CALCULATION_THRESHOLD_BP, COMPENSATORY_CALCULATION_THRESHOLD_V))
-        # prohibit negative compensatory calculations when first activating long after accelerator depression or engagement
-        if not CC.longActive:
-          self.prohibit_neg_calculation = True
-        # don't reset until a reasonable compensatory value is reached
-        if CS.pcm_neutral_force > comp_thresh * self.CP.mass:
-          self.prohibit_neg_calculation = False
-        # limit minimum to only positive until first positive is reached after engagement, don't calculate when long isn't active
-        if CC.longActive and not self.prohibit_neg_calculation:
-          accel_offset = CS.pcm_neutral_force / self.CP.mass
-        else:
-          accel_offset = 0.
+        # NEUTRAL_FORCE ÷ 車重のフィードフォワード(accel_offset)は、upstream で車重(CP.mass)が無くなったので外した。
+        # 出どころの dodgypilot も 2024-09 に外している。坂道による誤差は long_pid が吸収する。
         # only calculate pcm_accel_cmd when long is active to prevent disengagement from accelerator depression
         if CC.longActive:
-          pcm_accel_cmd = float(np.clip(actuators_accel + accel_offset, self.params.ACCEL_MIN, self.params.ACCEL_MAX))
+          pcm_accel_cmd = float(np.clip(actuators_accel, self.params.ACCEL_MIN, self.params.ACCEL_MAX))
         else:
           pcm_accel_cmd = 0.
 
