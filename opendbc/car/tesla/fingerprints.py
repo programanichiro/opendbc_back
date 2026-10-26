@@ -56,16 +56,11 @@ FW_VERSIONS = {
       b'TeMYG4_SingleECU_0.0.0 (28),Y4S002.23.0',
       b'TeMYG4_SingleECU_0.0.0 (33),Y4S002.26',
       b'TeMYG4_Main_0.0.0 (87),Y4003.09.3',
-<<<<<<< HEAD
-      b'TeMYG4_SingleECU_0.0.0 (28),Y4S002.23.0',
-      b'TeMYG4_SingleECU_0.0.0 (33),Y4S002.26',
+      b'TeMYG4_Main_0.0.0 (92),Y4003.10.2',
       b'\x01\x0113\x04\x00\x01\x00\x00\x01\x01\x00\x00\x00\x00\x00\x00\xff\xff',
       b'TeMYG4_Main_0.0.0 (78),Y4OC.E80.003.07.0',
       b'TeMYG4_Main_0.0.0 (87),DL005.08.3', #Japan 2026 model Y
       b'TeMYG4_Main_0.0.0 (92),Y4OC003.11.2', #Japan 2026 model Y
-=======
-      b'TeMYG4_Main_0.0.0 (92),Y4003.10.2',
->>>>>>> 1bce882c6330f8cc591f368f415ae5fa241ae225
     ],
   },
   CAR.TESLA_MODEL_X: {

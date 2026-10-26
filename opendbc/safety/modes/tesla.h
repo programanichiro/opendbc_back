@@ -2,20 +2,6 @@
 
 #include "opendbc/safety/declarations.h"
 
-#define TESLA_COMMON_RX_CHECKS \
-  {.msg = {{0x2b9, 2, 8, 25U, .max_counter = 7U, .ignore_quality_flag = true}, { 0 }, { 0 }}},    /* DAS_control */                                  \
-  {.msg = {{0x488, 2, 4, 50U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},   /* DAS_steeringControl */                          \
-  {.msg = {{0x257, 0, 8, 50U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},   /* DI_speed (speed in kph) */                      \
-  {.msg = {{0x155, 0, 8, 50U, .max_counter = 15U}, { 0 }, { 0 }}},                                /* ESP_B (2nd speed in kph) */                     \
-  {.msg = {{0x370, 0, 8, 100U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},  /* EPAS3S_sysStatus (steering angle) */            \
-  {.msg = {{0x118, 0, 8, 100U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},  /* DI_systemStatus (gas pedal) */                  \
-  {.msg = {{0x145, 0, 8, 50U, .max_counter = 15U}, { 0 }, { 0 }}},                                /* ESP_status (brakes) */                          \
-  {.msg = {{0x286, 0, 8, 10U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},   /* DI_state (acc state) */                         \
-
-/* not sent on HW4 gen2 */
-#define TESLA_UI_WARNING_RX_CHECK \
-  {.msg = {{0x311, 0, 7, 10U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},   /* UI_warning (blinkers, buckle switch & doors) */ \
-
 static bool tesla_longitudinal = false;
 static bool tesla_stock_aeb = false;
 
@@ -363,15 +349,6 @@ static safety_config tesla_init(uint16_t param) {
   tesla_autopark = true;
   tesla_autopark_prev = false;
 
-<<<<<<< HEAD
-  static RxCheck tesla_model3_y_rx_checks[] = {
-    TESLA_COMMON_RX_CHECKS
-    TESLA_UI_WARNING_RX_CHECK
-  };
-
-  static RxCheck tesla_hw4_gen2_rx_checks[] = {
-    TESLA_COMMON_RX_CHECKS
-=======
   static const RxCheck tesla_model3_y_rx_checks[] = {
     {.msg = {{0x2b9, 2, 8, 25U, .max_counter = 7U, .ignore_quality_flag = true}, { 0 }, { 0 }}},    // DAS_control
     {.msg = {{0x488, 2, 4, 50U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},   // DAS_steeringControl
@@ -382,20 +359,25 @@ static safety_config tesla_init(uint16_t param) {
     {.msg = {{0x145, 0, 8, 50U, .max_counter = 15U}, { 0 }, { 0 }}},                                // ESP_status (brakes)
     {.msg = {{0x286, 0, 8, 10U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},   // DI_state (acc state)
     {.msg = {{0x311, 0, 7, 10U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},   // UI_warning (blinkers, buckle switch & doors)
->>>>>>> 1bce882c6330f8cc591f368f415ae5fa241ae225
+  };
+
+  // HW4 gen2 does not send UI_warning
+  static const RxCheck tesla_hw4_gen2_rx_checks[] = {
+    {.msg = {{0x2b9, 2, 8, 25U, .max_counter = 7U, .ignore_quality_flag = true}, { 0 }, { 0 }}},    // DAS_control
+    {.msg = {{0x488, 2, 4, 50U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},   // DAS_steeringControl
+    {.msg = {{0x257, 0, 8, 50U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},   // DI_speed (speed in kph)
+    {.msg = {{0x155, 0, 8, 50U, .max_counter = 15U}, { 0 }, { 0 }}},                                // ESP_B (2nd speed in kph)
+    {.msg = {{0x370, 0, 8, 100U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // EPAS3S_sysStatus (steering angle)
+    {.msg = {{0x118, 0, 8, 100U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},  // DI_systemStatus (gas pedal)
+    {.msg = {{0x145, 0, 8, 50U, .max_counter = 15U}, { 0 }, { 0 }}},                                // ESP_status (brakes)
+    {.msg = {{0x286, 0, 8, 10U, .max_counter = 15U, .ignore_quality_flag = true}, { 0 }, { 0 }}},   // DI_state (acc state)
   };
 
   safety_config ret;
   if (tesla_longitudinal) {
-    SET_TX_MSGS(TESLA_M3_Y_LONG_TX_MSGS, ret);
+    ret = BUILD_SAFETY_CFG(tesla_hw4_gen2 ? tesla_hw4_gen2_rx_checks : tesla_model3_y_rx_checks, TESLA_M3_Y_LONG_TX_MSGS);
   } else {
-    SET_TX_MSGS(TESLA_M3_Y_TX_MSGS, ret);
-  }
-
-  if (tesla_hw4_gen2) {
-    SET_RX_CHECKS(tesla_hw4_gen2_rx_checks, ret);
-  } else {
-    SET_RX_CHECKS(tesla_model3_y_rx_checks, ret);
+    ret = BUILD_SAFETY_CFG(tesla_hw4_gen2 ? tesla_hw4_gen2_rx_checks : tesla_model3_y_rx_checks, TESLA_M3_Y_TX_MSGS);
   }
   return ret;
 }
