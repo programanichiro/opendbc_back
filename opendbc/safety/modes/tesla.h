@@ -374,10 +374,18 @@ static safety_config tesla_init(uint16_t param) {
   };
 
   safety_config ret;
-  if (tesla_longitudinal) {
-    ret = BUILD_SAFETY_CFG(tesla_hw4_gen2 ? tesla_hw4_gen2_rx_checks : tesla_model3_y_rx_checks, TESLA_M3_Y_LONG_TX_MSGS);
+  if (tesla_hw4_gen2) {
+    if (tesla_longitudinal) {
+      ret = BUILD_SAFETY_CFG(tesla_hw4_gen2_rx_checks, TESLA_M3_Y_LONG_TX_MSGS);
+    } else {
+      ret = BUILD_SAFETY_CFG(tesla_hw4_gen2_rx_checks, TESLA_M3_Y_TX_MSGS);
+    }
   } else {
-    ret = BUILD_SAFETY_CFG(tesla_hw4_gen2 ? tesla_hw4_gen2_rx_checks : tesla_model3_y_rx_checks, TESLA_M3_Y_TX_MSGS);
+    if (tesla_longitudinal) {
+      ret = BUILD_SAFETY_CFG(tesla_model3_y_rx_checks, TESLA_M3_Y_LONG_TX_MSGS);
+    } else {
+      ret = BUILD_SAFETY_CFG(tesla_model3_y_rx_checks, TESLA_M3_Y_TX_MSGS);
+    }
   }
   return ret;
 }
