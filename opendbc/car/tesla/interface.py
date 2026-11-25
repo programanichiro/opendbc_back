@@ -6,20 +6,6 @@ from opendbc.car.tesla.values import TeslaSafetyFlags, TeslaFlags, CANBUS, CAR, 
 from opendbc.car.tesla.radar_interface import RadarInterface, RADAR_START_ADDR
 
 
-def _mads_enabled() -> bool:
-  # The fork's MADS toggle (mici Toggles panel) stores its state in
-  # /data/steer_always.txt; the same file drives controlsd's latActive through
-  # /dev/shm. Mirror it here so the panda only allows lateral control in cruise
-  # STANDBY when the user has MADS on. Any read failure means off (stock behavior).
-  # イチロウパイロットでは本体に Tesla 専用の params やトグルを足さないので、協調操舵と
-  # 「ハンドル操作でディスエンゲージしない」も、この MADS の ON/OFF にまとめて従わせる
-  try:
-    with open('/data/steer_always.txt') as f:
-      return int(f.read().strip() or 0) >= 1
-  except Exception:
-    return False
-
-
 class CarInterface(CarInterfaceBase):
   CarState = CarState
   CarController = CarController
@@ -31,11 +17,11 @@ class CarInterface(CarInterfaceBase):
 
     ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.tesla)]
 
-    # MADS が ON なら、オーナーの組み合わせ（MADS・協調操舵・ディスエンゲージしない）をまとめて有効にする。
-    # OFF なら公式と同じ動き。起動時に一度だけ読むので、切り替えは次のオンロードから効く
-    if _mads_enabled():
-      ret.flags |= TeslaFlags.STEER_NO_DISENGAGE.value | TeslaFlags.COOP_STEERING.value
-      ret.safetyConfigs[0].safetyParam |= TeslaSafetyFlags.STEER_NO_DISENGAGE.value | TeslaSafetyFlags.MADS.value
+    # 協調操舵（使い勝手の改善）と、ハンドル操作でディスエンゲージしない（トヨタと同じ動き）は常に有効。
+    # panda の MADS フラグも常に立て、MADS で操舵するかどうかは本体が /dev/shm/steer_always.txt を
+    # 毎フレーム読んで決める（トヨタと同じ扱い）。これで MADS ボタンは運転中に切り替えてもすぐ効く
+    ret.flags |= TeslaFlags.STEER_NO_DISENGAGE.value | TeslaFlags.COOP_STEERING.value
+    ret.safetyConfigs[0].safetyParam |= TeslaSafetyFlags.STEER_NO_DISENGAGE.value | TeslaSafetyFlags.MADS.value
 
     ret.steerLimitTimer = 0.4
     ret.steerActuatorDelay = 0.1

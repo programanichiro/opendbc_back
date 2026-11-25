@@ -90,14 +90,15 @@ class TestTeslaFingerprint(unittest.TestCase):
     assert CP.flags & TeslaFlags.HW4_GEN2_VEHICLE_BUS
     assert CP.radarUnavailable
 
-  def test_steer_no_disengage_default_off(self):
-    # STEER_NO_DISENGAGE is opt-in via the TeslaSteerNoDisengage param; without it
-    # the params must be identical to upstream (no flag, no safety param bit)
+  def test_fork_lateral_flags_always_on(self):
+    # イチロウパイロットでは協調操舵・ディスエンゲージしない・panda の MADS を常に有効にする
     fingerprint = gen_empty_fingerprint()
     fingerprint[CANBUS.autopilot_party][0x399] = 8
     CP = CarInterface.get_params(CAR.TESLA_MODEL_Y, fingerprint, [], False, False, False)
-    assert not CP.flags & TeslaFlags.STEER_NO_DISENGAGE
-    assert not CP.safetyConfigs[0].safetyParam & TeslaSafetyFlags.STEER_NO_DISENGAGE
+    assert CP.flags & TeslaFlags.STEER_NO_DISENGAGE
+    assert CP.flags & TeslaFlags.COOP_STEERING
+    assert CP.safetyConfigs[0].safetyParam & TeslaSafetyFlags.STEER_NO_DISENGAGE
+    assert CP.safetyConfigs[0].safetyParam & TeslaSafetyFlags.MADS
 
   def test_no_radar_car(self):
     # Model X doesn't have radar DBC defined, should always be unavailable
