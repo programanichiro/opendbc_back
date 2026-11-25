@@ -92,7 +92,8 @@ static void tesla_rx_hook(const CANPacket_t *msg) {
     const uint8_t eac_error_code = msg->data[2] >> 4;  // EPAS3S_eacErrorCode
 
     // Disengage on normal user override, or if high angle rate fault from user overriding extremely quickly
-    safety.steering_disengage = (hands_on_level >= 3U) || ((eac_status == 0U) && (eac_error_code == 9U));
+    // With tesla_steer_no_disengage, steering override never disengages; brake/gas disengages are unaffected
+    safety.steering_disengage = !safety_setup.tesla_steer_no_disengage && ((hands_on_level >= 3U) || ((eac_status == 0U) && (eac_error_code == 9U)));
   }
 
   // Vehicle speed (DI_speed)
@@ -140,10 +141,12 @@ static void tesla_rx_hook(const CANPacket_t *msg) {
                           (cruise_state == 7U);    // PRE_CANCEL
     cruise_engaged = cruise_engaged && !safety.tesla_autopark;
 
-    // MADS: Tesla に ACC メインスイッチは無いので、STANDBY かエンゲージ中を「使える状態」とする
-    //safety.acc_main_on = (cruise_state == 1) || cruise_engaged;   // 1 = STANDBY
-    //safety.lateral_controls_allowed = safety.acc_main_on;
-    //MADSの挙動が危ないので、上記しばらく封印
+    // MADS: Tesla has no ACC main switch, so STANDBY or engaged counts as "usable".
+    // Lateral control is only allowed while the MADS safety flag is set (opt-in via
+    // the fork's MADS toggle); without the flag, steering stays gated on
+    // controls_allowed exactly as stock. Longitudinal is never affected.
+    safety.acc_main_on = (cruise_state == 1U) || cruise_engaged;   // 1 = STANDBY
+    safety.lateral_controls_allowed = safety_setup.tesla_mads && safety.acc_main_on;
     
     pcm_cruise_check(cruise_engaged);
   }
@@ -200,14 +203,18 @@ static bool tesla_tx_hook(const CANPacket_t *msg) {
     // We use 1/10 deg as a unit here
     int desired_angle = from_offset(GET_BYTES_BE(msg, 0, 2) & 0x7FFFU, 16384);
     uint8_t steer_control_type = msg->data[2] >> 5;  // DAS_steeringControlType
-    bool steer_control_enabled = steer_control_type == 1U;  // ANGLE_CONTROL
+    // LANE_KEEP_ASSIST (cooperative steering) carries the same angle request and
+    // is held to the same VM angle checks as ANGLE_CONTROL
+    bool steer_control_enabled = (steer_control_type == 1U) ||  // ANGLE_CONTROL
+                                 (steer_control_type == 2U);    // LANE_KEEP_ASSIST
 
     if (steer_angle_cmd_checks_vm(desired_angle, steer_control_enabled, TESLA_STEERING_LIMITS, TESLA_STEERING_PARAMS)) {
       violation = true;
     }
 
     bool valid_steer_control_type = (steer_control_type == 0U) ||  // NONE
-                                    (steer_control_type == 1U);    // ANGLE_CONTROL
+                                    (steer_control_type == 1U) ||  // ANGLE_CONTROL
+                                    (steer_control_type == 2U);    // LANE_KEEP_ASSIST
     if (!valid_steer_control_type) {
       violation = true;
     }
@@ -308,6 +315,12 @@ static safety_config tesla_init(uint16_t param) {
 
   const uint16_t TESLA_FLAG_HW4_GEN2 = 4;
   const bool tesla_hw4_gen2 = GET_FLAG(param, TESLA_FLAG_HW4_GEN2);
+
+  const uint16_t TESLA_FLAG_STEER_NO_DISENGAGE = 8;
+  safety_setup.tesla_steer_no_disengage = GET_FLAG(param, TESLA_FLAG_STEER_NO_DISENGAGE);
+
+  const uint16_t TESLA_FLAG_MADS = 16;
+  safety_setup.tesla_mads = GET_FLAG(param, TESLA_FLAG_MADS);
 
 #ifdef ALLOW_DEBUG
   const uint16_t TESLA_FLAG_LONGITUDINAL_CONTROL = 1;

@@ -262,12 +262,36 @@ class TestTeslaSafetyBase(common.CarSafetyTest, common.AngleSteeringSafetyTest, 
       self.assertEqual(self.LONGITUDINAL, self._tx(self._long_control_msg(0, acc_state=self.acc_states["ACC_ON"])))
 
   def test_steering_control_type(self):
-    # Only angle control is allowed (no LANE_KEEP_ASSIST, EMERGENCY_LANE_KEEP, or FSD)
+    # ANGLE_CONTROL and LANE_KEEP_ASSIST (cooperative steering) are allowed
+    # (no EMERGENCY_LANE_KEEP or FSD)
     self.safety.set_controls_allowed(True)
     for steer_control_type in range(8):
       should_tx = steer_control_type in (self.steer_control_types["NONE"],
-                                         self.steer_control_types["ANGLE_CONTROL"])
+                                         self.steer_control_types["ANGLE_CONTROL"],
+                                         self.steer_control_types["LANE_KEEP_ASSIST"])
       self.assertEqual(should_tx, self._tx(self._angle_cmd_msg(0, state=steer_control_type)))
+
+  def test_lateral_limits_apply_to_lkas(self):
+    # LANE_KEEP_ASSIST is held to the same VM angle checks as ANGLE_CONTROL
+    lkas = self.steer_control_types["LANE_KEEP_ASSIST"]
+    speed = 20
+    # match DI_vehicleSpeed rounding on CAN
+    speed = round_speed(away_round(speed / 0.08 * 3.6) * 0.08 / 3.6)
+    self.safety.set_controls_allowed(True)
+    self._reset_speed_measurement(speed + 1)  # safety fudges the speed
+
+    self.assertTrue(self._tx(self._angle_cmd_msg(0, lkas)))
+
+    # Stay within limits
+    max_angle_delta = round_angle(get_max_angle_delta_vm(speed, self.VM, CarControllerParams), 0)
+    self.assertTrue(self._tx(self._angle_cmd_msg(max_angle_delta, lkas)))
+
+    # Back to 0
+    self.assertTrue(self._tx(self._angle_cmd_msg(0, lkas)))
+
+    # Inject too high a rate: blocked, same as ANGLE_CONTROL
+    max_angle_delta = round_angle(get_max_angle_delta_vm(speed, self.VM, CarControllerParams), 1)
+    self.assertFalse(self._tx(self._angle_cmd_msg(max_angle_delta, lkas)))
 
   def test_stock_lkas_passthrough(self):
     # TODO: make these generic passthrough tests
@@ -449,6 +473,74 @@ class TestTeslaHW4Gen2StockSafety(TestTeslaStockSafety):
 
 class TestTeslaHW4Gen2LongitudinalSafety(TestTeslaLongitudinalSafety):
   SAFETY_PARAM = TeslaSafetyFlags.HW4_GEN2 | TeslaSafetyFlags.LONG_CONTROL
+
+
+class TeslaSteerNoDisengageBase:
+  # With STEER_NO_DISENGAGE, neither a high hands on level nor a high angle rate
+  # fault from overriding may disengage; controls stay allowed throughout
+  def test_steering_wheel_disengage(self):
+    for hands_on_level in range(4):
+      for eac_status in range(8):
+        for eac_error_code in range(16):
+          self.safety.set_controls_allowed(True)
+
+          self.assertTrue(self._rx(self._angle_meas_msg(0, hands_on_level=hands_on_level, eac_status=eac_status,
+                                                        eac_error_code=eac_error_code)))
+          self.assertTrue(self.safety.get_controls_allowed())
+          self.assertFalse(self.safety.get_steering_disengage_prev())
+
+
+class TestTeslaSteerNoDisengageSafety(TeslaSteerNoDisengageBase, TestTeslaStockSafety):
+  SAFETY_PARAM = TeslaSafetyFlags.STEER_NO_DISENGAGE
+
+
+class TestTeslaHW4Gen2SteerNoDisengageSafety(TeslaSteerNoDisengageBase, TestTeslaHW4Gen2StockSafety):
+  SAFETY_PARAM = TeslaSafetyFlags.HW4_GEN2 | TeslaSafetyFlags.STEER_NO_DISENGAGE
+
+
+class TeslaMadsBase:
+  # With the MADS safety flag, lateral control is allowed while cruise is in
+  # STANDBY (not engaged) and drops again when cruise leaves STANDBY/engaged.
+  # controls_allowed (and with it longitudinal) is never raised by MADS.
+  def _cruise_state_msg(self, cruise_state: int):
+    values = {"DI_cruiseState": cruise_state, "DI_autoparkState": 0}
+    return self.packer.make_can_msg_safety("DI_state", 0, values)
+
+  def test_mads_lateral_allowed_in_standby(self):
+    self.assertTrue(self._rx(self._speed_msg(10)))
+    self.assertTrue(self._rx(self._angle_meas_msg(0)))
+
+    # cruise OFF: steering blocked
+    self.assertTrue(self._rx(self._cruise_state_msg(0)))
+    self.assertFalse(self.safety.get_controls_allowed())
+    self.assertFalse(self._tx(self._angle_cmd_msg(0, 1)))
+
+    # STANDBY: lateral allowed with MADS, controls_allowed stays off
+    self.assertTrue(self._rx(self._cruise_state_msg(1)))
+    self.assertFalse(self.safety.get_controls_allowed())
+    self.assertTrue(self._tx(self._angle_cmd_msg(0, 1)))
+
+    # back to OFF: blocked again
+    self.assertTrue(self._rx(self._cruise_state_msg(0)))
+    self.assertFalse(self._tx(self._angle_cmd_msg(0, 1)))
+
+
+class TestTeslaMadsSafety(TeslaMadsBase, TestTeslaStockSafety):
+  SAFETY_PARAM = TeslaSafetyFlags.MADS
+
+
+class TestTeslaHW4Gen2MadsSafety(TeslaMadsBase, TestTeslaHW4Gen2StockSafety):
+  SAFETY_PARAM = TeslaSafetyFlags.HW4_GEN2 | TeslaSafetyFlags.MADS
+
+
+class TestTeslaMadsOffSafety(TestTeslaStockSafety):
+  # Without the MADS safety flag, cruise STANDBY alone must not allow steering
+  def test_mads_standby_blocked_without_flag(self):
+    self.assertTrue(self._rx(self._speed_msg(10)))
+    self.assertTrue(self._rx(self._angle_meas_msg(0)))
+    values = {"DI_cruiseState": 1, "DI_autoparkState": 0}
+    self.assertTrue(self._rx(self.packer.make_can_msg_safety("DI_state", 0, values)))
+    self.assertFalse(self._tx(self._angle_cmd_msg(0, 1)))
 
 
 class TestTeslaIgnition(common.SafetyTestBase):

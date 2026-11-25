@@ -6,6 +6,39 @@ from opendbc.car.tesla.values import TeslaSafetyFlags, TeslaFlags, CANBUS, CAR, 
 from opendbc.car.tesla.radar_interface import RadarInterface, RADAR_START_ADDR
 
 
+def _steer_no_disengage_enabled() -> bool:
+  # Optional user toggle: steering override pauses lateral control instead of disengaging
+  # (Toyota-style). Read from Params so the default stays upstream behavior; opendbc also
+  # runs standalone (tests/docs), where openpilot's Params is not importable.
+  try:
+    from openpilot.common.params import Params
+    return Params().get_bool("TeslaSteerNoDisengage")
+  except ImportError:
+    return False
+
+
+def _mads_enabled() -> bool:
+  # The fork's MADS toggle (mici Toggles panel) stores its state in
+  # /data/steer_always.txt; the same file drives controlsd's latActive through
+  # /dev/shm. Mirror it here so the panda only allows lateral control in cruise
+  # STANDBY when the user has MADS on. Any read failure means off (stock behavior).
+  try:
+    with open('/data/steer_always.txt') as f:
+      return int(f.read().strip() or 0) >= 1
+  except Exception:
+    return False
+
+
+def _coop_steering_enabled() -> bool:
+  # Optional user toggle: send steering commands as LANE_KEEP_ASSIST (cooperative steering,
+  # like stock FSD) instead of ANGLE_CONTROL. Same Params pattern as above.
+  try:
+    from openpilot.common.params import Params
+    return Params().get_bool("TeslaCoopSteering")
+  except ImportError:
+    return False
+
+
 class CarInterface(CarInterfaceBase):
   CarState = CarState
   CarController = CarController
@@ -16,6 +49,16 @@ class CarInterface(CarInterfaceBase):
     ret.brand = "tesla"
 
     ret.safetyConfigs = [get_safety_config(structs.CarParams.SafetyModel.tesla)]
+
+    if _steer_no_disengage_enabled():
+      ret.flags |= TeslaFlags.STEER_NO_DISENGAGE.value
+      ret.safetyConfigs[0].safetyParam |= TeslaSafetyFlags.STEER_NO_DISENGAGE.value
+
+    if _coop_steering_enabled():
+      ret.flags |= TeslaFlags.COOP_STEERING.value
+
+    if _mads_enabled():
+      ret.safetyConfigs[0].safetyParam |= TeslaSafetyFlags.MADS.value
 
     ret.steerLimitTimer = 0.4
     ret.steerActuatorDelay = 0.1

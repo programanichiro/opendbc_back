@@ -67,9 +67,12 @@ class CarState(CarStateBase):
     ret.steerFaultTemporary = eac_status == "EAC_INHIBITED"
 
     # FSD disengages using union of handsOnLevel (slow overrides) and high angle rate faults (fast overrides, high speed)
+    # With STEER_NO_DISENGAGE, steering override only pauses lateral control via steeringPressed (Toyota-style);
+    # steerFaultTemporary above still soft-disables if the EPS actually inhibits steering
     eac_error_code = self.can_define.dv["EPAS3S_sysStatus"]["EPAS3S_eacErrorCode"].get(int(epas_status["EPAS3S_eacErrorCode"]), None)
-    ret.steeringDisengage = self.hands_on_level >= 3 or (eac_status == "EAC_INHIBITED" and
-                                                         eac_error_code == "EAC_ERROR_HIGH_ANGLE_RATE_SAFETY")
+    ret.steeringDisengage = not (self.CP.flags & TeslaFlags.STEER_NO_DISENGAGE) and \
+      (self.hands_on_level >= 3 or (eac_status == "EAC_INHIBITED" and
+                                    eac_error_code == "EAC_ERROR_HIGH_ANGLE_RATE_SAFETY"))
 
     # Cruise state
     cruise_state = self.can_define.dv["DI_state"]["DI_cruiseState"].get(int(cp_party.vl["DI_state"]["DI_cruiseState"]), None)

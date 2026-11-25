@@ -126,6 +126,11 @@ class CarControllerParams:
 class TeslaSafetyFlags(IntFlag):
   LONG_CONTROL = 1
   HW4_GEN2 = 4
+  # steering override never disengages (Toyota-style); set from the TeslaSteerNoDisengage param
+  STEER_NO_DISENGAGE = 8
+  # lateral control allowed while cruise is in STANDBY or engaged (MADS);
+  # set when the fork's MADS toggle (steer_always) is on
+  MADS = 16
 
   # deprecated flags
   DAS_STEERING_3_BIT_DEPRECATED = 2
@@ -138,6 +143,11 @@ class TeslaFlags(IntFlag):
   HW4_GEN2 = 8
   # blinkers and the seatbelt buckle are only on the VEHICLE bus, which needs its CAN lines tapped
   HW4_GEN2_VEHICLE_BUS = 16
+  # steering override never disengages (Toyota-style); set from the TeslaSteerNoDisengage param
+  STEER_NO_DISENGAGE = 32
+  # send steering commands as LANE_KEEP_ASSIST instead of ANGLE_CONTROL (cooperative steering);
+  # set from the TeslaCoopSteering param
+  COOP_STEERING = 64
 
   # deprecated flags
   # old 2-bit FW is now dashcammed
@@ -146,4 +156,4 @@ class TeslaFlags(IntFlag):
 
 DBC = CAR.create_dbc_map()
 
-STEER_THRESHOLD = 1
+STEER_THRESHOLD = 2
